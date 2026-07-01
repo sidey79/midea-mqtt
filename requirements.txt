@@ -1,0 +1,2 @@
+msmart-ng==2026.4.1
+paho-mqtt==2.1.0

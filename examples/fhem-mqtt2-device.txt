@@ -1,0 +1,34 @@
+# FHEM MQTT2 example for the Midea bridge
+#
+# Change the device name and topic base to match your setup.
+define MideaBridge MQTT2_DEVICE midea_bridge
+attr MideaBridge devicetopic midea/buero/klima
+attr MideaBridge jsonMap target_temperature:desired-temp indoor_temperature:measured-temp power_state:power-state real_time_power:current-power estimated_energy_kwh:energy-total
+attr MideaBridge readingList midea_bridge:$DEVICETOPIC/state:.* { json2nameValue($EVENT,'',$JSONMAP) }\
+midea_bridge:$DEVICETOPIC/availability:.* availability
+attr MideaBridge setList on:noArg $DEVICETOPIC/set {"power":true}\
+off:noArg $DEVICETOPIC/set {"power":false}\
+mode:uzsuSelect,auto,cool,dry,heat,fan_only $DEVICETOPIC/set {"mode":"$EVTPART1"}\
+desired-temp:slider,16,0.5,30 $DEVICETOPIC/set {"desired-temp":$EVTPART1}\
+fan:uzsuSelect,auto,silent,low,medium,high,max $DEVICETOPIC/set {"fan":"$EVTPART1"}\
+swing:uzsuSelect,off,vertical,horizontal,both $DEVICETOPIC/set {"swing":"$EVTPART1"}\
+display:on,off $DEVICETOPIC/set {"display_on":"$EVTPART1"}\
+beep:on,off $DEVICETOPIC/set {"beep":"$EVTPART1"}\
+freeze_protection:on,off $DEVICETOPIC/set {"freeze_protection":"$EVTPART1"}\
+sleep:on,off $DEVICETOPIC/set {"sleep":"$EVTPART1"}\
+follow_me:on,off $DEVICETOPIC/set {"follow_me":"$EVTPART1"}\
+purifier:on,off $DEVICETOPIC/set {"purifier":"$EVTPART1"}\
+ieco:on,off $DEVICETOPIC/set {"ieco":"$EVTPART1"}\
+flash_cool:on,off $DEVICETOPIC/set {"flash_cool":"$EVTPART1"}\
+out_silent:on,off $DEVICETOPIC/set {"out_silent":"$EVTPART1"}\
+target_humidity:slider,30,1,70 $DEVICETOPIC/set {"target_humidity":$EVTPART1}\
+cascade_mode:off,up,down $DEVICETOPIC/set {"cascade_mode":"$EVTPART1"}\
+rate_select:off,gear_50,gear_75,level_1,level_2,level_3,level_4,level_5 $DEVICETOPIC/set {"rate_select":"$EVTPART1"}\
+aux_mode:off,aux_heat,aux_only $DEVICETOPIC/set {"aux_mode":"$EVTPART1"}\
+breeze_mode:off,breeze_away,breeze_mild,breezeless $DEVICETOPIC/set {"breeze_mode":"$EVTPART1"}\
+self_clean:noArg $DEVICETOPIC/set {"self_clean":true}
+attr MideaBridge setStateList on off mode desired-temp fan swing display breeze_mode self_clean
+attr MideaBridge webCmd on:off:mode:desired-temp:fan:swing:display:breeze_mode:self_clean
+attr MideaBridge event-on-change-reading .*
+attr MideaBridge room Klima
+

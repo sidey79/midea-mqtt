@@ -1,0 +1,20 @@
+name: midea-fhem-bridge-example
+
+services:
+  midea-bridge:
+    build:
+      context: .
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MQTT_HOST: ${MQTT_HOST:-fhem}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      MQTT_USER: ${MQTT_USER:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MIDEA_AC_HOST: ${MIDEA_AC_HOST}
+      MIDEA_AC_PORT: ${MIDEA_AC_PORT:-6444}
+      MIDEA_AC_ID: ${MIDEA_AC_ID:-}
+      MIDEA_AC_TOKEN: ${MIDEA_AC_TOKEN:-}
+      MIDEA_AC_KEY: ${MIDEA_AC_KEY:-}
+      MIDEA_POLL_INTERVAL: ${MIDEA_POLL_INTERVAL:-30}
+      MIDEA_TOPIC_BASE: ${MIDEA_TOPIC_BASE:-midea/buero/klima}
+    restart: unless-stopped
