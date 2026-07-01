@@ -1,4 +1,6 @@
+name: midea-mqtt-bridge
+
 services:
   midea-bridge:
+    networks: !reset []
     network_mode: host
-    networks: []
