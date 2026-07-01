@@ -1,4 +1,4 @@
-name: midea-fhem-bridge-example
+name: midea-mqtt-bridge
 
 services:
   midea-bridge:
@@ -16,5 +16,12 @@ services:
       MIDEA_AC_TOKEN: ${MIDEA_AC_TOKEN:-}
       MIDEA_AC_KEY: ${MIDEA_AC_KEY:-}
       MIDEA_POLL_INTERVAL: ${MIDEA_POLL_INTERVAL:-30}
-      MIDEA_TOPIC_BASE: ${MIDEA_TOPIC_BASE:-midea/buero/klima}
+      MIDEA_TOPIC_BASE: ${MIDEA_TOPIC_BASE:-midea/klima}
     restart: unless-stopped
+    networks:
+      - midea-internal
+
+networks:
+  midea-internal:
+    name: midea-mqtt-internal
+    internal: true

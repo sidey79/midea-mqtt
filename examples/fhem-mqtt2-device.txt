@@ -2,7 +2,7 @@
 #
 # Change the device name and topic base to match your setup.
 define MideaBridge MQTT2_DEVICE midea_bridge
-attr MideaBridge devicetopic midea/buero/klima
+attr MideaBridge devicetopic midea/klima
 attr MideaBridge jsonMap target_temperature:desired-temp indoor_temperature:measured-temp power_state:power-state real_time_power:current-power estimated_energy_kwh:energy-total
 attr MideaBridge readingList midea_bridge:$DEVICETOPIC/state:.* { json2nameValue($EVENT,'',$JSONMAP) }\
 midea_bridge:$DEVICETOPIC/availability:.* availability

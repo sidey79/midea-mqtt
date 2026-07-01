@@ -1,0 +1,4 @@
+services:
+  midea-bridge:
+    network_mode: host
+    networks: []
