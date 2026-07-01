@@ -17,9 +17,9 @@ services:
       MIDEA_AC_KEY: ${MIDEA_AC_KEY:-}
       MIDEA_POLL_INTERVAL: ${MIDEA_POLL_INTERVAL:-30}
       MIDEA_TOPIC_BASE: ${MIDEA_TOPIC_BASE:-midea/klima}
-    restart: unless-stopped
     networks:
       - midea-internal
+    restart: unless-stopped
 
 networks:
   midea-internal:
