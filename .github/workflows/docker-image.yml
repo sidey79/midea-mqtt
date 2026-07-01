@@ -23,6 +23,33 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determine whether to publish version tags
+        id: publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          publish_version_tags=false
+          base="${{ github.event.before }}"
+          head="${{ github.sha }}"
+
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            if git rev-parse "${head}^" >/dev/null 2>&1; then
+              base="${head}^"
+            else
+              base="$head"
+            fi
+          fi
+
+          if [ "$base" != "$head" ] && ! git diff --quiet "$base" "$head" -- VERSION; then
+            publish_version_tags=true
+          fi
+
+          echo "publish_version_tags=$publish_version_tags" >> "$GITHUB_OUTPUT"
 
       - name: Read version
         id: version
@@ -83,10 +110,10 @@ jobs:
         with:
           images: ${{ steps.version.outputs.image }}
           tags: |
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=raw,value=${{ steps.version.outputs.minor }},enable=${{ steps.version.outputs.stable == 'true' }}
-            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.stable == 'true' }}
-            type=raw,value=latest,enable=${{ steps.version.outputs.stable == 'true' }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.publish.outputs.publish_version_tags == 'true' }}
+            type=raw,value=${{ steps.version.outputs.minor }},enable=${{ steps.version.outputs.stable == 'true' && steps.publish.outputs.publish_version_tags == 'true' }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.stable == 'true' && steps.publish.outputs.publish_version_tags == 'true' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.stable == 'true' && steps.publish.outputs.publish_version_tags == 'true' }}
             type=sha,prefix=sha-
 
       - name: Build Docker image
