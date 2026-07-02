@@ -19,7 +19,9 @@ sleep:on,off $DEVICETOPIC/set {"sleep":"$EVTPART1"}\
 follow_me:on,off $DEVICETOPIC/set {"follow_me":"$EVTPART1"}\
 purifier:on,off $DEVICETOPIC/set {"purifier":"$EVTPART1"}\
 ieco:on,off $DEVICETOPIC/set {"ieco":"$EVTPART1"}\
+flash:on,off $DEVICETOPIC/set {"flash":"$EVTPART1"}\
 flash_cool:on,off $DEVICETOPIC/set {"flash_cool":"$EVTPART1"}\
+fresh_air_fan_speed:off,low,medium,high,boost $DEVICETOPIC/set {"fresh_air_fan_speed":"$EVTPART1"}\
 out_silent:on,off $DEVICETOPIC/set {"out_silent":"$EVTPART1"}\
 target_humidity:slider,30,1,70 $DEVICETOPIC/set {"target_humidity":$EVTPART1}\
 cascade_mode:off,up,down $DEVICETOPIC/set {"cascade_mode":"$EVTPART1"}\
@@ -27,8 +29,8 @@ rate_select:off,gear_50,gear_75,level_1,level_2,level_3,level_4,level_5 $DEVICET
 aux_mode:off,aux_heat,aux_only $DEVICETOPIC/set {"aux_mode":"$EVTPART1"}\
 breeze_mode:off,breeze_away,breeze_mild,breezeless $DEVICETOPIC/set {"breeze_mode":"$EVTPART1"}\
 self_clean:noArg $DEVICETOPIC/set {"self_clean":true}
-attr MideaBridge setStateList on off mode desired-temp fan swing display breeze_mode self_clean
-attr MideaBridge webCmd on:off:mode:desired-temp:fan:swing:display:breeze_mode:self_clean
+attr MideaBridge setStateList on off mode desired-temp fan swing display flash fresh_air_fan_speed breeze_mode self_clean
+attr MideaBridge webCmd on:off:mode:desired-temp:fan:swing:display:flash:fresh_air_fan_speed:breeze_mode:self_clean
 attr MideaBridge event-on-change-reading .*
 attr MideaBridge room Klima
 

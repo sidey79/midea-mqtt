@@ -51,6 +51,7 @@ def install_dependency_stubs() -> None:
         class Discover:  # pragma: no cover - only used for import-time compatibility
             pass
 
+        AirConditioner.FreshAirFanSpeed = enum.Enum("FreshAirFanSpeed", "OFF LOW MEDIUM HIGH BOOST")
         device_module.AirConditioner = AirConditioner
         discover_module.Discover = Discover
         msmart_module.device = device_module
@@ -62,6 +63,17 @@ def install_dependency_stubs() -> None:
 
 install_dependency_stubs()
 midea_mqtt_bridge = importlib.import_module("midea_mqtt_bridge")
+
+
+def make_bridge():
+    bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
+    bridge.device_lock = asyncio.Lock()
+    bridge.stop_event = asyncio.Event()
+    bridge.device_offline_published = False
+    bridge.device_retry_delay = 5
+    bridge.device_retry_at = 0.0
+    bridge.mqtt = types.SimpleNamespace(publish=lambda *args, **kwargs: None)
+    return bridge
 
 
 class StatePayloadTests(unittest.TestCase):
@@ -125,6 +137,21 @@ class StatePayloadTests(unittest.TestCase):
 
         self.assertEqual(payload["estimated_energy_wh"], 1234.567)
         self.assertEqual(payload["estimated_energy_kwh"], 1.234567)
+
+    def test_state_payload_includes_flash_and_fresh_air_fields(self) -> None:
+        bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
+        device = types.SimpleNamespace(
+            online=True,
+            supported=True,
+            flash_cool=True,
+            _fresh_air_fan_speed=types.SimpleNamespace(name="BOOST"),
+        )
+
+        payload = midea_mqtt_bridge.MideaBridge.state_payload(bridge, device)
+
+        self.assertTrue(payload["flash"])
+        self.assertTrue(payload["flash_cool"])
+        self.assertEqual(payload["fresh_air_fan_speed"], "boost")
 
 
 class CommandWorkerTests(unittest.IsolatedAsyncioTestCase):
@@ -197,13 +224,7 @@ class PollOfflineTests(unittest.IsolatedAsyncioTestCase):
 
 class CascadeModeCommandTests(unittest.IsolatedAsyncioTestCase):
     async def test_apply_command_sets_public_cascade_property(self) -> None:
-        bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
-        bridge.device_lock = asyncio.Lock()
-        bridge.stop_event = asyncio.Event()
-        bridge.device_offline_published = False
-        bridge.device_retry_delay = 5
-        bridge.device_retry_at = 0.0
-        bridge.mqtt = types.SimpleNamespace(publish=lambda *args, **kwargs: None)
+        bridge = make_bridge()
 
         midea_mqtt_bridge.AC.CascadeMode = enum.Enum("CascadeMode", "OFF UP DOWN")
 
@@ -228,13 +249,7 @@ class CascadeModeCommandTests(unittest.IsolatedAsyncioTestCase):
 
 class ValidationTests(unittest.IsolatedAsyncioTestCase):
     async def test_invalid_command_values_do_not_drop_device_offline(self) -> None:
-        bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
-        bridge.device_lock = asyncio.Lock()
-        bridge.stop_event = asyncio.Event()
-        bridge.device_offline_published = False
-        bridge.device_retry_delay = 5
-        bridge.device_retry_at = 0.0
-        bridge.mqtt = types.SimpleNamespace(publish=lambda *args, **kwargs: None)
+        bridge = make_bridge()
 
         midea_mqtt_bridge.AC.OperationalMode = enum.Enum("OperationalMode", "AUTO COOL HEAT")
         midea_mqtt_bridge.AC.FanSpeed = enum.Enum("FanSpeed", "AUTO LOW HIGH")
@@ -272,13 +287,135 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_device_calls, 1)
         self.assertEqual(device.target_temperature, 23.5)
 
+    async def test_invalid_fresh_air_fan_speed_does_not_drop_device_offline(self) -> None:
+        bridge = make_bridge()
+
+        midea_mqtt_bridge.AC.FreshAirFanSpeed = enum.Enum("FreshAirFanSpeed", "OFF LOW MEDIUM HIGH BOOST")
+
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            fresh_air_fan_speed=midea_mqtt_bridge.AC.FreshAirFanSpeed.OFF,
+        )
+        get_device_calls = 0
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            nonlocal get_device_calls
+            get_device_calls += 1
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"fresh_air_fan_speed": "warp-speed"})
+
+        self.assertEqual(get_device_calls, 0)
+        self.assertFalse(bridge.device_offline_published)
+        self.assertEqual(bridge.device_retry_at, 0.0)
+
+
+class FlashAndFreshAirCommandTests(unittest.IsolatedAsyncioTestCase):
+    async def test_apply_command_sets_flash_on_new_api_shape(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            flash=False,
+            flash_cool=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"flash": True})
+
+        self.assertTrue(device.flash)
+        self.assertFalse(device.flash_cool)
+
+    async def test_apply_command_maps_flash_cool_to_public_flash_on_new_api_shape(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            flash=False,
+            flash_cool=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"flash_cool": True})
+
+        self.assertTrue(device.flash)
+        self.assertFalse(device.flash_cool)
+
+    async def test_apply_command_ignores_private_flash_without_public_setter(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            _flash=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"flash": True})
+
+        self.assertFalse(device._flash)
+        self.assertFalse(bridge.device_offline_published)
+
+    async def test_apply_command_keeps_legacy_flash_cool_on_old_api_shape(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            flash_cool=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"flash_cool": True})
+
+        self.assertTrue(device.flash_cool)
+
+    async def test_apply_command_sets_fresh_air_fan_speed(self) -> None:
+        bridge = make_bridge()
+        midea_mqtt_bridge.AC.FreshAirFanSpeed = enum.Enum("FreshAirFanSpeed", "OFF LOW MEDIUM HIGH BOOST")
+
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            fresh_air_fan_speed=midea_mqtt_bridge.AC.FreshAirFanSpeed.OFF,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"fresh_air_fan_speed": "boost"})
+
+        self.assertEqual(device.fresh_air_fan_speed, midea_mqtt_bridge.AC.FreshAirFanSpeed.BOOST)
+
 
 class BreezeModeCommandTests(unittest.IsolatedAsyncioTestCase):
     async def test_apply_command_sets_only_requested_breeze_flag(self) -> None:
-        bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
-        bridge.device_lock = asyncio.Lock()
-        bridge.stop_event = asyncio.Event()
-        bridge.device_offline_published = False
+        bridge = make_bridge()
 
         midea_mqtt_bridge.AC.BreezeMode = enum.Enum("BreezeMode", "OFF BREEZE_AWAY BREEZE_MILD BREEZELESS")
 
@@ -302,6 +439,30 @@ class BreezeModeCommandTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(device.breeze_away)
         self.assertFalse(device.breeze_mild)
         self.assertFalse(device.breezeless)
+
+
+class InstalledDependencyIntrospectionTests(unittest.TestCase):
+    def test_airconditioner_exposes_expected_public_enums(self) -> None:
+        stubbed_modules = {
+            name: sys.modules[name]
+            for name in ("msmart", "msmart.device", "msmart.discover")
+            if name in sys.modules
+        }
+        for name in stubbed_modules:
+            sys.modules.pop(name, None)
+        try:
+            try:
+                from msmart.device import AirConditioner as AC
+            except ModuleNotFoundError:
+                self.skipTest("installed msmart dependency is not available")
+
+            self.assertTrue(hasattr(AC, "FreshAirFanSpeed"))
+            self.assertTrue(hasattr(AC, "FanSpeed"))
+            self.assertTrue(hasattr(AC, "OperationalMode"))
+        finally:
+            for name in ("msmart", "msmart.device", "msmart.discover"):
+                sys.modules.pop(name, None)
+            sys.modules.update(stubbed_modules)
 
 
 class LockSerializationTests(unittest.IsolatedAsyncioTestCase):
