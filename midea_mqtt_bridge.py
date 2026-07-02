@@ -360,8 +360,8 @@ class MideaBridge:
             "supported_swing_modes": enum_values(read_device_attr(device, "supported_swing_modes", "_supported_swing_modes")),
             "supported_aux_modes": enum_values(read_device_attr(device, "supported_aux_modes", "_supported_aux_modes")),
             "supported_rate_selects": enum_values(read_device_attr(device, "supported_rate_selects", "_supported_rate_selects")),
-            "eco": optional_bool(device, "eco_mode", "eco"),
-            "eco_mode": optional_bool(device, "eco_mode", "eco"),
+            "eco": optional_bool(device, "eco", "eco_mode"),
+            "eco_mode": optional_bool(device, "eco", "eco_mode"),
             "freeze_protection": optional_bool(device, "freeze_protection", "_freeze_protection"),
             "sleep": optional_bool(device, "sleep", "_sleep"),
             "follow_me": optional_bool(device, "follow_me", "_follow_me"),
@@ -369,8 +369,8 @@ class MideaBridge:
             "ieco": optional_bool(device, "ieco", "_ieco"),
             "flash_cool": optional_bool(device, "flash_cool", "_flash_cool"),
             "out_silent": optional_bool(device, "out_silent", "_out_silent"),
-            "turbo": optional_bool(device, "turbo_mode", "turbo"),
-            "turbo_mode": optional_bool(device, "turbo_mode", "turbo"),
+            "turbo": optional_bool(device, "turbo", "turbo_mode"),
+            "turbo_mode": optional_bool(device, "turbo", "turbo_mode"),
             "display_on": optional_bool(device, "display_on"),
             "fahrenheit": optional_bool(device, "fahrenheit"),
             "filter_alert": optional_bool(device, "filter_alert", "_filter_alert"),
@@ -458,9 +458,9 @@ class MideaBridge:
                 if "beep" in command:
                     set_optional_bool(device, command["beep"], "beep", "beep_on")
                 if "eco" in command:
-                    set_optional_bool(device, command["eco"], "eco_mode", "eco")
+                    set_optional_bool(device, command["eco"], "eco", "eco_mode")
                 if "eco_mode" in command:
-                    set_optional_bool(device, command["eco_mode"], "eco_mode", "eco")
+                    set_optional_bool(device, command["eco_mode"], "eco", "eco_mode")
                 if "freeze_protection" in command:
                     set_optional_bool(device, command["freeze_protection"], "freeze_protection", "_freeze_protection")
                 if "sleep" in command:
@@ -478,9 +478,9 @@ class MideaBridge:
                 if "target_humidity" in command:
                     set_optional_number(device, command["target_humidity"], "target_humidity", "_target_humidity")
                 if "turbo" in command:
-                    set_optional_bool(device, command["turbo"], "turbo_mode", "turbo")
+                    set_optional_bool(device, command["turbo"], "turbo", "turbo_mode")
                 if "turbo_mode" in command:
-                    set_optional_bool(device, command["turbo_mode"], "turbo_mode", "turbo")
+                    set_optional_bool(device, command["turbo_mode"], "turbo", "turbo_mode")
                 if "breeze_mode" in command:
                     breeze = command["breeze_mode"]
                     if breeze == AC.BreezeMode.BREEZE_AWAY:
