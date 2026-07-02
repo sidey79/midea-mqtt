@@ -54,3 +54,5 @@ Optional:
 - The bridge publishes to `midea/klima` by default. Change `MIDEA_TOPIC_BASE` if you want a different topic prefix.
 - FHEM is documented here as an example consumer, not as the only supported target.
 - Adjust the FHEM topic base and room names to match your setup.
+- `msmart-ng` 2026.7 adds Fresh Air support. The bridge uses `flash` as the canonical name and keeps `flash_cool` as a legacy compatibility alias.
+- Supported values depend on the concrete AC model.

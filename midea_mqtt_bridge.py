@@ -188,6 +188,7 @@ def normalize_command_values(command: dict[str, Any]) -> dict[str, Any]:
         "horizontal_swing_angle": getattr(AC, "SwingAngle", None),
         "vertical_swing_angle": getattr(AC, "SwingAngle", None),
         "breeze_mode": getattr(AC, "BreezeMode", None),
+        "fresh_air_fan_speed": getattr(AC, "FreshAirFanSpeed", None),
     }
     for key, enum_cls in enum_fields.items():
         if key in normalized and enum_cls is not None:
@@ -367,7 +368,13 @@ class MideaBridge:
             "follow_me": optional_bool(device, "follow_me", "_follow_me"),
             "purifier": optional_bool(device, "purifier", "_purifier"),
             "ieco": optional_bool(device, "ieco", "_ieco"),
-            "flash_cool": optional_bool(device, "flash_cool", "_flash_cool"),
+            "flash": optional_bool(device, "flash", "_flash", "flash_cool", "_flash_cool"),
+            "flash_cool": optional_bool(device, "flash_cool", "_flash_cool", "flash", "_flash"),
+            "fresh_air_fan_speed": enum_value(
+                read_device_attr(device, "fresh_air_fan_speed", "_fresh_air_fan_speed")
+            ),
+            "supports_flash": optional_bool(device, "supports_flash", "supports_flash_cool"),
+            "supports_fresh_air": optional_bool(device, "supports_fresh_air"),
             "out_silent": optional_bool(device, "out_silent", "_out_silent"),
             "turbo": optional_bool(device, "turbo", "turbo_mode"),
             "turbo_mode": optional_bool(device, "turbo", "turbo_mode"),
@@ -471,12 +478,21 @@ class MideaBridge:
                     set_optional_bool(device, command["purifier"], "purifier", "_purifier")
                 if "ieco" in command:
                     set_optional_bool(device, command["ieco"], "ieco", "_ieco")
+                if "flash" in command:
+                    set_optional_bool(device, command["flash"], "flash", "_flash", "flash_cool", "_flash_cool")
                 if "flash_cool" in command:
-                    set_optional_bool(device, command["flash_cool"], "flash_cool", "_flash_cool")
+                    set_optional_bool(device, command["flash_cool"], "flash", "_flash", "flash_cool", "_flash_cool")
                 if "out_silent" in command:
                     set_optional_bool(device, command["out_silent"], "out_silent", "_out_silent")
                 if "target_humidity" in command:
                     set_optional_number(device, command["target_humidity"], "target_humidity", "_target_humidity")
+                if "fresh_air_fan_speed" in command:
+                    set_device_attr(
+                        device,
+                        command["fresh_air_fan_speed"],
+                        "fresh_air_fan_speed",
+                        "_fresh_air_fan_speed",
+                    )
                 if "turbo" in command:
                     set_optional_bool(device, command["turbo"], "turbo", "turbo_mode")
                 if "turbo_mode" in command:
