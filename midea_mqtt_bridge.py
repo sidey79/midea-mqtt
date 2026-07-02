@@ -479,9 +479,9 @@ class MideaBridge:
                 if "ieco" in command:
                     set_optional_bool(device, command["ieco"], "ieco", "_ieco")
                 if "flash" in command:
-                    set_optional_bool(device, command["flash"], "flash", "_flash", "flash_cool", "_flash_cool")
+                    set_optional_bool(device, command["flash"], "flash", "flash_cool")
                 if "flash_cool" in command:
-                    set_optional_bool(device, command["flash_cool"], "flash", "_flash", "flash_cool", "_flash_cool")
+                    set_optional_bool(device, command["flash_cool"], "flash", "flash_cool")
                 if "out_silent" in command:
                     set_optional_bool(device, command["out_silent"], "out_silent", "_out_silent")
                 if "target_humidity" in command:

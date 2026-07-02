@@ -355,6 +355,25 @@ class FlashAndFreshAirCommandTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(device.flash)
         self.assertFalse(device.flash_cool)
 
+    async def test_apply_command_ignores_private_flash_without_public_setter(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            _flash=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"flash": True})
+
+        self.assertFalse(device._flash)
+        self.assertFalse(bridge.device_offline_published)
+
     async def test_apply_command_keeps_legacy_flash_cool_on_old_api_shape(self) -> None:
         bridge = make_bridge()
         device = types.SimpleNamespace(
