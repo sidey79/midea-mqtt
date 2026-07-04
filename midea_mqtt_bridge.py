@@ -211,6 +211,7 @@ def extract_discovery_payload(device: Any, host: str) -> dict[str, Any]:
         "host": host,
         "id": getattr(device, "id", None),
         "ip": getattr(device, "ip", None),
+        "port": getattr(device, "port", None),
         "supported": bool(getattr(device, "supported", False)),
         "token": getattr(device, "token", None) or getattr(device, "_token", None),
         "key": getattr(device, "key", None) or getattr(device, "_key", None),

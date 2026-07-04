@@ -18,7 +18,7 @@ The repo includes FHEM MQTT2 examples, but the bridge itself can be used with an
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.discovery.yml up
    ```
-3. Read the discovery result from the console output and copy `id`, `token`, and `key` into `.env` or your stack file.
+3. Read the discovery result from the console output and copy `id`, `token`, `key`, and the discovered `port` if it is present into `.env` or your stack file.
 4. Stop the discovery stack if Compose is still attached, then start the normal bridge stack.
    ```bash
    docker compose up -d
@@ -42,6 +42,7 @@ Example console output with redacted credentials:
   "id": 123456789012345,
   "ip": "192.0.2.55",
   "key": "REDACTED_KEY",
+  "port": 6445,
   "supported": true,
   "token": "REDACTED_TOKEN"
 }
@@ -51,6 +52,7 @@ Use these values for the normal bridge run:
 
 ```env
 MIDEA_AC_HOST=192.0.2.55
+MIDEA_AC_PORT=6445
 MIDEA_AC_ID=123456789012345
 MIDEA_AC_TOKEN=REDACTED_TOKEN
 MIDEA_AC_KEY=REDACTED_KEY

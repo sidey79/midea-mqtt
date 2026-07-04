@@ -166,6 +166,7 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
         payload_device.id = 7
         payload_device.ip = "192.0.2.55"
         payload_device.supported = True
+        payload_device.port = 6445
         payload_device.token = None
         payload_device.key = None
         original_host = midea_mqtt_bridge.DEVICE_HOST
@@ -192,6 +193,7 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(code, 2)
         self.assertTrue(captured)
         self.assertIn('"discovery_complete": true', captured[0])
+        self.assertIn('"port": 6445', captured[0])
 
     async def test_discover_mqtt_publishes_payload(self) -> None:
         class FakeAirConditioner(midea_mqtt_bridge.AC):
@@ -201,6 +203,7 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
         payload_device.id = 7
         payload_device.ip = "192.0.2.55"
         payload_device.supported = True
+        payload_device.port = 6445
         payload_device.token = "tok"
         payload_device.key = "key"
         original_host = midea_mqtt_bridge.DEVICE_HOST
@@ -243,6 +246,7 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(code, 0)
         self.assertEqual(len(created_bridges), 1)
         self.assertGreaterEqual(len(created_bridges[0].mqtt.published), 2)
+        self.assertIn('"port": 6445', created_bridges[0].mqtt.published[0][0][1])
 
 
 class CommandWorkerTests(unittest.IsolatedAsyncioTestCase):
