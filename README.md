@@ -13,17 +13,48 @@ The repo includes FHEM MQTT2 examples, but the bridge itself can be used with an
 
 ## Quick Start
 
-1. Copy `.env.example` to `.env` and fill in the values.
-2. For the first device discovery run, start the bridge with the discovery override so the discovery traffic can reach the AC directly.
+1. Copy `.env.example` to `.env` or put the values directly into your stack file, whichever matches your deployment style.
+2. Set `MIDEA_AC_HOST` before the first discovery run. The discovery override switches the container to a one-shot CLI mode and keeps the output on the console, so start it without `-d`.
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.discovery.yml up -d
+   docker compose -f docker-compose.yml -f docker-compose.discovery.yml up
    ```
-3. Once discovery has succeeded, store the discovered `MIDEA_AC_ID`, `MIDEA_AC_TOKEN`, and `MIDEA_AC_KEY` in `.env`. The token/key pair is what the bridge uses later to authenticate directly against the AC without repeating discovery.
-4. Start the normal stack on the internal Docker network.
+3. Read the discovery result from the console output and copy `id`, `token`, and `key` into `.env` or your stack file.
+4. Stop the discovery stack if Compose is still attached, then start the normal bridge stack.
    ```bash
    docker compose up -d
    ```
 5. Import the FHEM example from `examples/fhem-mqtt2-device.txt` if you use FHEM as the MQTT client.
+
+## Discovery Example
+
+Start discovery in the foreground so the JSON result stays visible in the terminal:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.discovery.yml up
+```
+
+Example console output with redacted credentials:
+
+```json
+{
+  "discovery_complete": true,
+  "host": "192.0.2.55",
+  "id": 123456789012345,
+  "ip": "192.0.2.55",
+  "key": "REDACTED_KEY",
+  "supported": true,
+  "token": "REDACTED_TOKEN"
+}
+```
+
+Use these values for the normal bridge run:
+
+```env
+MIDEA_AC_HOST=192.0.2.55
+MIDEA_AC_ID=123456789012345
+MIDEA_AC_TOKEN=REDACTED_TOKEN
+MIDEA_AC_KEY=REDACTED_KEY
+```
 
 ## Environment
 

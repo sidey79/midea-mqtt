@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+import argparse
 import asyncio
 import json
 import logging
 import os
 import signal
+import sys
 import time
 from typing import Any
 
@@ -205,6 +207,18 @@ async def set_display_state(device: Any, value: Any) -> None:
         await device.toggle_display()
 
 
+def extract_discovery_payload(device: Any, host: str) -> dict[str, Any]:
+    payload = {
+        "host": host,
+        "id": getattr(device, "id", None),
+        "ip": getattr(device, "ip", None),
+        "supported": bool(getattr(device, "supported", False)),
+        "token": getattr(device, "token", None) or getattr(device, "_token", None),
+        "key": getattr(device, "key", None) or getattr(device, "_key", None),
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
 class MideaBridge:
     def __init__(self) -> None:
         if not DEVICE_HOST:
@@ -307,6 +321,14 @@ class MideaBridge:
             if not isinstance(discovered, AC):
                 raise RuntimeError(f"Discovered device at {DEVICE_HOST} is not a supported air conditioner")
             device = discovered
+            discovered_token = getattr(device, "token", None) or getattr(device, "_token", None)
+            discovered_key = getattr(device, "key", None) or getattr(device, "_key", None)
+            if not discovered_token or not discovered_key:
+                raise RuntimeError(
+                    "Discovery succeeded, but token/key were not provided by the library. "
+                    "Use --discover-output console|mqtt|both to inspect the device and feed the values back in. "
+                    "Set MIDEA_AC_TOKEN and MIDEA_AC_KEY before starting the bridge."
+                )
         await device.get_capabilities()
         await self.enable_optional_telemetry(device)
         await device.refresh()
@@ -582,14 +604,59 @@ class MideaBridge:
             self.mqtt.disconnect()
 
 
-async def main() -> None:
+async def run_discovery(output: str) -> int:
+    if not DEVICE_HOST:
+        raise RuntimeError("MIDEA_AC_HOST is required for discovery")
+    discovered = await Discover.discover_single(DEVICE_HOST)
+    if not isinstance(discovered, AC):
+        raise RuntimeError(f"Discovered device at {DEVICE_HOST} is not a supported air conditioner")
+    payload = extract_discovery_payload(discovered, DEVICE_HOST)
+    payload["discovery_complete"] = True
+    payload_json = json.dumps(payload, indent=2, sort_keys=True)
+    if output in {"console", "both"}:
+        print(payload_json)
+    if output in {"mqtt", "both"}:
+        bridge = MideaBridge()
+        bridge.mqtt.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
+        bridge.mqtt.loop_start()
+        try:
+            bridge.mqtt.publish(STATE_TOPIC, payload_json, retain=True)
+            bridge.mqtt.publish(AVAILABILITY_TOPIC, "online", retain=True)
+        finally:
+            bridge.mqtt.loop_stop()
+            bridge.mqtt.disconnect()
+    if not payload.get("token") or not payload.get("key"):
+        LOGGER.error("Discovery completed, but token/key were not found in the device object")
+        return 2
+    return 0
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Midea MQTT bridge")
+    parser.add_argument("--discover", action="store_true", help="run discovery and exit")
+    parser.add_argument(
+        "--discover-output",
+        choices=("console", "mqtt", "both"),
+        default="console",
+        help="where to publish discovery results",
+    )
+    return parser.parse_args(argv)
+
+
+
+
+async def main() -> int:
     logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    args = parse_args()
+    if args.discover:
+        return await run_discovery(args.discover_output)
     bridge = MideaBridge()
     loop = asyncio.get_running_loop()
     for signame in ("SIGINT", "SIGTERM"):
         loop.add_signal_handler(getattr(signal, signame), bridge.stop_event.set)
     await bridge.run()
+    return 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))
