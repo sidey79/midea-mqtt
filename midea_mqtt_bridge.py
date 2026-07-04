@@ -612,11 +612,13 @@ async def run_discovery(output: str) -> int:
         bridge.mqtt.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
         bridge.mqtt.loop_start()
         try:
-            bridge.mqtt.publish(STATE_TOPIC, payload_json, retain=True)
-            bridge.mqtt.publish(AVAILABILITY_TOPIC, "online", retain=True)
+            state_info = bridge.mqtt.publish(STATE_TOPIC, payload_json, retain=True)
+            offline_info = bridge.mqtt.publish(AVAILABILITY_TOPIC, "offline", retain=True)
+            state_info.wait_for_publish()
+            offline_info.wait_for_publish()
         finally:
-            bridge.mqtt.loop_stop()
             bridge.mqtt.disconnect()
+            bridge.mqtt.loop_stop()
     if not payload.get("token") or not payload.get("key"):
         LOGGER.warning(
             "Discovery completed without token/key; older or non-V3 devices may still work without them"

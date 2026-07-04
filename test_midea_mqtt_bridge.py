@@ -250,19 +250,31 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
         async def fake_discover_single(host: str) -> types.SimpleNamespace:
             return payload_device
 
+        class FakePublishInfo:
+            def __init__(self, events, topic):
+                self.events = events
+                self.topic = topic
+            def wait_for_publish(self):
+                self.events.append(("wait", self.topic))
+
         class FakeClient:
             def __init__(self):
                 self.published = []
+                self.events = []
             def connect(self, *args, **kwargs):
                 self.connected = (args, kwargs)
             def loop_start(self):
-                self.looped = True
+                self.events.append(("loop_start", None))
             def loop_stop(self):
+                self.events.append(("loop_stop", None))
                 self.stopped = True
             def disconnect(self):
+                self.events.append(("disconnect", None))
                 self.disconnected = True
             def publish(self, *args, **kwargs):
                 self.published.append((args, kwargs))
+                self.events.append(("publish", args[0]))
+                return FakePublishInfo(self.events, args[0])
 
         class FakeBridge:
             def __init__(self):
@@ -283,6 +295,20 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(created_bridges), 1)
         self.assertGreaterEqual(len(created_bridges[0].mqtt.published), 2)
         self.assertIn('"port": 6445', created_bridges[0].mqtt.published[0][0][1])
+        self.assertEqual(created_bridges[0].mqtt.published[1][0][0], midea_mqtt_bridge.AVAILABILITY_TOPIC)
+        self.assertEqual(created_bridges[0].mqtt.published[1][0][1], "offline")
+        self.assertEqual(
+            created_bridges[0].mqtt.events,
+            [
+                ("loop_start", None),
+                ("publish", midea_mqtt_bridge.STATE_TOPIC),
+                ("publish", midea_mqtt_bridge.AVAILABILITY_TOPIC),
+                ("wait", midea_mqtt_bridge.STATE_TOPIC),
+                ("wait", midea_mqtt_bridge.AVAILABILITY_TOPIC),
+                ("disconnect", None),
+                ("loop_stop", None),
+            ],
+        )
 
 
 class CommandWorkerTests(unittest.IsolatedAsyncioTestCase):
