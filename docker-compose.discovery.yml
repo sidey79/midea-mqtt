@@ -4,3 +4,5 @@ services:
   midea-bridge:
     networks: !reset []
     network_mode: host
+    restart: "no"
+    command: ["--discover", "--discover-output", "console"]

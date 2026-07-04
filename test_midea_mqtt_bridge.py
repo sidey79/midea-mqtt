@@ -1,4 +1,5 @@
 import asyncio
+import builtins
 import contextlib
 import enum
 import importlib
@@ -49,7 +50,9 @@ def install_dependency_stubs() -> None:
             pass
 
         class Discover:  # pragma: no cover - only used for import-time compatibility
-            pass
+            @staticmethod
+            async def discover_single(*args, **kwargs):
+                raise NotImplementedError
 
         AirConditioner.FreshAirFanSpeed = enum.Enum("FreshAirFanSpeed", "OFF LOW MEDIUM HIGH BOOST")
         device_module.AirConditioner = AirConditioner
@@ -152,6 +155,160 @@ class StatePayloadTests(unittest.TestCase):
         self.assertTrue(payload["flash"])
         self.assertTrue(payload["flash_cool"])
         self.assertEqual(payload["fresh_air_fan_speed"], "boost")
+
+
+class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_discover_console_outputs_payload_without_token_key(self) -> None:
+        class FakeAirConditioner(midea_mqtt_bridge.AC):
+            pass
+
+        payload_device = FakeAirConditioner()
+        payload_device.id = 7
+        payload_device.ip = "192.0.2.55"
+        payload_device.supported = True
+        payload_device.port = 6445
+        payload_device.token = None
+        payload_device.key = None
+        original_host = midea_mqtt_bridge.DEVICE_HOST
+        original_discover = midea_mqtt_bridge.Discover.discover_single
+        captured: list[str] = []
+
+        async def fake_discover_single(host: str) -> types.SimpleNamespace:
+            self.assertEqual(host, "192.0.2.55")
+            return payload_device
+
+        midea_mqtt_bridge.DEVICE_HOST = "192.0.2.55"
+        midea_mqtt_bridge.Discover.discover_single = fake_discover_single
+        try:
+            original_print = builtins.print
+            builtins.print = lambda value: captured.append(value)
+            try:
+                code = await midea_mqtt_bridge.run_discovery("console")
+            finally:
+                builtins.print = original_print
+        finally:
+            midea_mqtt_bridge.DEVICE_HOST = original_host
+            midea_mqtt_bridge.Discover.discover_single = original_discover
+
+        self.assertEqual(code, 0)
+        self.assertTrue(captured)
+        self.assertIn('"discovery_complete": true', captured[0])
+        self.assertIn('"port": 6445', captured[0])
+
+    async def test_connect_device_allows_discovery_without_token_key(self) -> None:
+        class FakeAirConditioner(midea_mqtt_bridge.AC):
+            async def get_capabilities(self):
+                self.capabilities_loaded = True
+
+            async def refresh(self):
+                self.refreshed = True
+
+        payload_device = FakeAirConditioner()
+        payload_device.id = 7
+        payload_device.ip = "192.0.2.55"
+        payload_device.supported = True
+        payload_device.token = None
+        payload_device.key = None
+        original_host = midea_mqtt_bridge.DEVICE_HOST
+        original_discover = midea_mqtt_bridge.Discover.discover_single
+
+        async def fake_discover_single(host: str) -> types.SimpleNamespace:
+            return payload_device
+
+        bridge = make_bridge()
+        bridge.enable_optional_telemetry = lambda device: asyncio.sleep(0)
+        bridge.mark_device_online = lambda: None
+
+        midea_mqtt_bridge.DEVICE_HOST = "192.0.2.55"
+        midea_mqtt_bridge.Discover.discover_single = fake_discover_single
+        try:
+            device = await midea_mqtt_bridge.MideaBridge.connect_device(bridge)
+        finally:
+            midea_mqtt_bridge.DEVICE_HOST = original_host
+            midea_mqtt_bridge.Discover.discover_single = original_discover
+
+        self.assertIs(device, payload_device)
+        self.assertTrue(payload_device.capabilities_loaded)
+        self.assertTrue(payload_device.refreshed)
+
+    async def test_discover_mqtt_publishes_payload(self) -> None:
+        class FakeAirConditioner(midea_mqtt_bridge.AC):
+            pass
+
+        payload_device = FakeAirConditioner()
+        payload_device.id = 7
+        payload_device.ip = "192.0.2.55"
+        payload_device.supported = True
+        payload_device.port = 6445
+        payload_device.token = "tok"
+        payload_device.key = "key"
+        original_host = midea_mqtt_bridge.DEVICE_HOST
+        original_discover = midea_mqtt_bridge.Discover.discover_single
+        original_bridge = midea_mqtt_bridge.MideaBridge
+        created_bridges: list[object] = []
+
+        async def fake_discover_single(host: str) -> types.SimpleNamespace:
+            return payload_device
+
+        class FakePublishInfo:
+            def __init__(self, events, topic):
+                self.events = events
+                self.topic = topic
+            def wait_for_publish(self):
+                self.events.append(("wait", self.topic))
+
+        class FakeClient:
+            def __init__(self):
+                self.published = []
+                self.events = []
+            def connect(self, *args, **kwargs):
+                self.connected = (args, kwargs)
+            def loop_start(self):
+                self.events.append(("loop_start", None))
+            def loop_stop(self):
+                self.events.append(("loop_stop", None))
+                self.stopped = True
+            def disconnect(self):
+                self.events.append(("disconnect", None))
+                self.disconnected = True
+            def publish(self, *args, **kwargs):
+                self.published.append((args, kwargs))
+                self.events.append(("publish", args[0]))
+                return FakePublishInfo(self.events, args[0])
+
+        class FakeBridge:
+            def __init__(self):
+                self.mqtt = FakeClient()
+                created_bridges.append(self)
+
+        midea_mqtt_bridge.DEVICE_HOST = "192.0.2.55"
+        midea_mqtt_bridge.Discover.discover_single = fake_discover_single
+        midea_mqtt_bridge.MideaBridge = FakeBridge
+        try:
+            code = await midea_mqtt_bridge.run_discovery("mqtt")
+        finally:
+            midea_mqtt_bridge.DEVICE_HOST = original_host
+            midea_mqtt_bridge.Discover.discover_single = original_discover
+            midea_mqtt_bridge.MideaBridge = original_bridge
+
+        self.assertEqual(code, 0)
+        self.assertEqual(len(created_bridges), 1)
+        self.assertGreaterEqual(len(created_bridges[0].mqtt.published), 2)
+        self.assertIn('"port": 6445', created_bridges[0].mqtt.published[0][0][1])
+        self.assertEqual(created_bridges[0].mqtt.published[1][0][0], midea_mqtt_bridge.AVAILABILITY_TOPIC)
+        self.assertEqual(created_bridges[0].mqtt.published[1][0][1], "offline")
+        self.assertEqual(
+            created_bridges[0].mqtt.events,
+            [
+                ("loop_start", None),
+                ("publish", midea_mqtt_bridge.STATE_TOPIC),
+                ("publish", midea_mqtt_bridge.AVAILABILITY_TOPIC),
+                ("wait", midea_mqtt_bridge.STATE_TOPIC),
+                ("wait", midea_mqtt_bridge.AVAILABILITY_TOPIC),
+                ("disconnect", None),
+                ("loop_stop", None),
+            ],
+        )
 
 
 class CommandWorkerTests(unittest.IsolatedAsyncioTestCase):
