@@ -1,3 +1,0 @@
-services:
-  midea-bridge:
-    image: midea-mqtt:test
