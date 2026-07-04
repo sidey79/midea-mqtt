@@ -158,7 +158,7 @@ class StatePayloadTests(unittest.TestCase):
 
 
 class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
-    async def test_discover_console_outputs_payload_and_returns_error_without_token_key(self) -> None:
+    async def test_discover_console_outputs_payload_without_token_key(self) -> None:
         class FakeAirConditioner(midea_mqtt_bridge.AC):
             pass
 
@@ -190,10 +190,46 @@ class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
             midea_mqtt_bridge.DEVICE_HOST = original_host
             midea_mqtt_bridge.Discover.discover_single = original_discover
 
-        self.assertEqual(code, 2)
+        self.assertEqual(code, 0)
         self.assertTrue(captured)
         self.assertIn('"discovery_complete": true', captured[0])
         self.assertIn('"port": 6445', captured[0])
+
+    async def test_connect_device_allows_discovery_without_token_key(self) -> None:
+        class FakeAirConditioner(midea_mqtt_bridge.AC):
+            async def get_capabilities(self):
+                self.capabilities_loaded = True
+
+            async def refresh(self):
+                self.refreshed = True
+
+        payload_device = FakeAirConditioner()
+        payload_device.id = 7
+        payload_device.ip = "192.0.2.55"
+        payload_device.supported = True
+        payload_device.token = None
+        payload_device.key = None
+        original_host = midea_mqtt_bridge.DEVICE_HOST
+        original_discover = midea_mqtt_bridge.Discover.discover_single
+
+        async def fake_discover_single(host: str) -> types.SimpleNamespace:
+            return payload_device
+
+        bridge = make_bridge()
+        bridge.enable_optional_telemetry = lambda device: asyncio.sleep(0)
+        bridge.mark_device_online = lambda: None
+
+        midea_mqtt_bridge.DEVICE_HOST = "192.0.2.55"
+        midea_mqtt_bridge.Discover.discover_single = fake_discover_single
+        try:
+            device = await midea_mqtt_bridge.MideaBridge.connect_device(bridge)
+        finally:
+            midea_mqtt_bridge.DEVICE_HOST = original_host
+            midea_mqtt_bridge.Discover.discover_single = original_discover
+
+        self.assertIs(device, payload_device)
+        self.assertTrue(payload_device.capabilities_loaded)
+        self.assertTrue(payload_device.refreshed)
 
     async def test_discover_mqtt_publishes_payload(self) -> None:
         class FakeAirConditioner(midea_mqtt_bridge.AC):

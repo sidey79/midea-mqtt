@@ -321,14 +321,6 @@ class MideaBridge:
             if not isinstance(discovered, AC):
                 raise RuntimeError(f"Discovered device at {DEVICE_HOST} is not a supported air conditioner")
             device = discovered
-            discovered_token = getattr(device, "token", None) or getattr(device, "_token", None)
-            discovered_key = getattr(device, "key", None) or getattr(device, "_key", None)
-            if not discovered_token or not discovered_key:
-                raise RuntimeError(
-                    "Discovery succeeded, but token/key were not provided by the library. "
-                    "Use --discover-output console|mqtt|both to inspect the device and feed the values back in. "
-                    "Set MIDEA_AC_TOKEN and MIDEA_AC_KEY before starting the bridge."
-                )
         await device.get_capabilities()
         await self.enable_optional_telemetry(device)
         await device.refresh()
@@ -626,8 +618,9 @@ async def run_discovery(output: str) -> int:
             bridge.mqtt.loop_stop()
             bridge.mqtt.disconnect()
     if not payload.get("token") or not payload.get("key"):
-        LOGGER.error("Discovery completed, but token/key were not found in the device object")
-        return 2
+        LOGGER.warning(
+            "Discovery completed without token/key; older or non-V3 devices may still work without them"
+        )
     return 0
 
 
