@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import signal
-import sys
 import time
 from typing import Any
 
@@ -641,8 +640,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="where to publish discovery results",
     )
     return parser.parse_args(argv)
-
-
 
 
 async def main() -> int:
