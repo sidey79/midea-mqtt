@@ -2,7 +2,7 @@ name: midea-mqtt-bridge
 
 services:
   midea-bridge:
-    image: ghcr.io/sidey79/midea-mqtt:0.1.1
+    image: ghcr.io/sidey79/midea-mqtt:0.1.1@sha256:1950066c52822b7c9f31065e063af968cf59f75677ff18fe2c6881bc89dfe19c
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       MQTT_HOST: ${MQTT_HOST:-fhem}
