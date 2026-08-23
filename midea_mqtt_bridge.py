@@ -330,7 +330,14 @@ class MideaBridge:
         return device
 
     async def enable_optional_telemetry(self, device: AC) -> None:
-        for attr_name in ("enable_energy_usage_requests", "enable_group5_data_requests"):
+        for attr_name in (
+            "enable_energy_usage_requests",
+            "enable_group1_data_requests",
+            "enable_group2_data_requests",
+            "enable_group5_data_requests",
+            "enable_group7_data_requests",
+            "enable_group11_data_requests",
+        ):
             if not hasattr(device, attr_name):
                 continue
             try:
@@ -367,6 +374,19 @@ class MideaBridge:
             "total_energy": read_metric_value(device, "total_energy", "_total_energy_usage"),
             "current_energy": read_metric_value(device, "current_energy", "_current_energy_usage"),
             "real_time_power": read_metric_value(device, "real_time_power", "_real_time_power_usage"),
+            "target_compressor_frequency": read_device_attr(device, "target_compressor_frequency", "_target_compressor_frequency"),
+            "compressor_frequency": read_device_attr(device, "compressor_frequency", "_compressor_frequency"),
+            "compressor_current": read_device_attr(device, "compressor_current", "_compressor_current"),
+            "compressor_voltage": read_device_attr(device, "compressor_voltage", "_compressor_voltage"),
+            "indoor_coil_temperature": read_device_attr(device, "indoor_coil_temperature", "_indoor_coil_temperature"),
+            "outdoor_coil_temperature": read_device_attr(device, "outdoor_coil_temperature", "_outdoor_coil_temperature"),
+            "discharge_pipe_temperature": read_device_attr(device, "discharge_pipe_temperature", "_discharge_pipe_temperature"),
+            "target_indoor_fan_speed": read_device_attr(device, "target_indoor_fan_speed", "_target_indoor_fan_speed"),
+            "indoor_fan_speed": read_device_attr(device, "indoor_fan_speed", "_indoor_fan_speed"),
+            "water_pump_running": read_device_attr(device, "water_pump_running", "_water_pump_running"),
+            "outdoor_unit_power": read_device_attr(device, "outdoor_unit_power", "_outdoor_unit_power"),
+            "horizontal_louvers_angle": read_device_attr(device, "horizontal_louvers_angle", "_horizontal_louvers_angle"),
+            "vertical_louvers_angle": read_device_attr(device, "vertical_louvers_angle", "_vertical_louvers_angle"),
             "mode": enum_value(getattr(device, "operational_mode", None)),
             "fan": enum_value(getattr(device, "fan_speed", None)),
             "swing": enum_value(getattr(device, "swing_mode", None)),
