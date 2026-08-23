@@ -119,6 +119,19 @@ class StatePayloadTests(unittest.TestCase):
             _total_energy_usage={"bcd": 1234, "binary": None},
             _current_energy_usage={"bcd": 56, "binary": None},
             _real_time_power_usage={"bcd": 789, "binary": None},
+            _target_compressor_frequency=42,
+            _compressor_frequency=40,
+            _compressor_current=3,
+            _compressor_voltage=230,
+            _indoor_coil_temperature=18.5,
+            _outdoor_coil_temperature=35.0,
+            _discharge_pipe_temperature=55,
+            _target_indoor_fan_speed=800,
+            _indoor_fan_speed=750,
+            _water_pump_running=True,
+            _outdoor_unit_power=920.0,
+            _horizontal_louvers_angle=12,
+            _vertical_louvers_angle=34,
         )
 
         payload = midea_mqtt_bridge.MideaBridge.state_payload(bridge, device)
@@ -126,6 +139,19 @@ class StatePayloadTests(unittest.TestCase):
         self.assertEqual(payload["total_energy"], 1234)
         self.assertEqual(payload["current_energy"], 56)
         self.assertEqual(payload["real_time_power"], 789)
+        self.assertEqual(payload["target_compressor_frequency"], 42)
+        self.assertEqual(payload["compressor_frequency"], 40)
+        self.assertEqual(payload["compressor_current"], 3)
+        self.assertEqual(payload["compressor_voltage"], 230)
+        self.assertEqual(payload["indoor_coil_temperature"], 18.5)
+        self.assertEqual(payload["outdoor_coil_temperature"], 35.0)
+        self.assertEqual(payload["discharge_pipe_temperature"], 55)
+        self.assertEqual(payload["target_indoor_fan_speed"], 800)
+        self.assertEqual(payload["indoor_fan_speed"], 750)
+        self.assertTrue(payload["water_pump_running"])
+        self.assertEqual(payload["outdoor_unit_power"], 920.0)
+        self.assertEqual(payload["horizontal_louvers_angle"], 12)
+        self.assertEqual(payload["vertical_louvers_angle"], 34)
 
     def test_state_payload_includes_estimated_energy(self) -> None:
         bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
@@ -700,13 +726,21 @@ class TelemetryActivationTests(unittest.IsolatedAsyncioTestCase):
         bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
         device = types.SimpleNamespace(
             enable_energy_usage_requests=False,
+            enable_group1_data_requests=False,
+            enable_group2_data_requests=False,
             enable_group5_data_requests=False,
+            enable_group7_data_requests=False,
+            enable_group11_data_requests=False,
         )
 
         await midea_mqtt_bridge.MideaBridge.enable_optional_telemetry(bridge, device)
 
         self.assertTrue(device.enable_energy_usage_requests)
+        self.assertTrue(device.enable_group1_data_requests)
+        self.assertTrue(device.enable_group2_data_requests)
         self.assertTrue(device.enable_group5_data_requests)
+        self.assertTrue(device.enable_group7_data_requests)
+        self.assertTrue(device.enable_group11_data_requests)
 
 
 if __name__ == "__main__":
