@@ -118,7 +118,6 @@ jobs:
           vuln-type: 'os,library'
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
 
       - name: Print Trivy scan report to job log
         uses: aquasecurity/trivy-action@v0.36.0
@@ -131,7 +130,6 @@ jobs:
           skip-setup-trivy: true
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
 
       - name: Upload Trivy results to GitHub Security tab
         if: github.event.pull_request.head.repo.fork != true
