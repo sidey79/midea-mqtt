@@ -1,6 +1,6 @@
 # Release-Prozess: Plan bis Version 1.0
 
-Status: Arbeitsentwurf, noch nicht umgesetzt
+Status: entschieden, Umsetzung ausstehend
 
 ## Ziel
 
@@ -158,9 +158,38 @@ Zwei Fallstricke, die bei der Umsetzung zu prüfen sind:
 - Der Abbruch muss vor dem Push in die Registry greifen, damit kein Image
   veröffentlicht wird, das anschließend als fehlerhaft markiert werden müsste.
 
-### 6. Weg zu 1.0.0
+### 6. Container-Smoke-Test
 
-Zu klären ist, was `1.0.0` inhaltlich bedeutet. Vorschlag als Kriterien:
+Die bestehende Pipeline-Spezifikation hat den Smoke-Test zurückgestellt, bis das
+Image einen testbaren Aufruf anbietet. Der fehlende Baustein dafür ist ein
+`--version`-Flag.
+
+- `midea_mqtt_bridge.py` erhält in der bereits vorhandenen `parse_args`-Funktion
+  ein `--version`. Da `parse_args` in `main` vor der Konstruktion von
+  `MideaBridge` läuft, greift das Flag vor der Prüfung der Pflicht-Umgebungs-
+  variablen und beendet das Programm ohne Laufzeitkonfiguration.
+- Die Versionsangabe kommt aus der Datei `VERSION`, die dafür ins Image kopiert
+  und relativ zum Skript gelesen wird. Damit bleibt `VERSION` die einzige
+  Quelle, und es braucht kein Build-Argument. Fällt das Lesen aus, wird
+  `unknown` ausgegeben statt eine Ausnahme zu werfen — ein Diagnose-Flag darf
+  den Start nicht gefährden.
+- Der Test in der Pipeline nutzt das Image, das für den Trivy-Scan ohnehin schon
+  lokal geladen wird, und braucht deshalb keinen zusätzlichen Build:
+
+  ```bash
+  test "$(docker run --rm "$IMAGE:scan" --version)" = "$(cat VERSION)"
+  ```
+
+- Damit prüft der Smoke-Test zwei Dinge auf einmal: dass der Container
+  überhaupt startet und seinen Interpreter samt Abhängigkeiten findet, und dass
+  das gebaute Image die Version trägt, unter der es veröffentlicht werden soll.
+- Der Test läuft nur auf `linux/amd64`, weil nur diese Architektur auf dem
+  Runner ohne Emulation ausführbar ist. Für die anderen Architekturen bleibt es
+  beim Build als Nachweis.
+
+### 7. Weg zu 1.0.0
+
+`1.0.0` ist erreicht, wenn die folgenden Kriterien erfüllt sind:
 
 - Der MQTT-Topic-Aufbau und das State-Payload-Format gelten als stabil, weil
   Nutzer ihre FHEM- oder Home-Assistant-Konfiguration daran binden. Ein
@@ -188,12 +217,9 @@ Zu klären ist, was `1.0.0` inhaltlich bedeutet. Vorschlag als Kriterien:
 4. **Der Changelog wird vollständig rekonstruiert**, also `0.1.0`, `0.1.1`,
    `0.1.2`, `0.2.0` und `0.3.0` rückwirkend eingetragen. Umsetzung siehe
    Schritt 1.
+5. **Der Smoke-Test ist Teil des Umfangs**, nicht optional. Er setzt ein
+   `--version`-Flag voraus, das zugleich der Diagnose im Betrieb dient.
+   Umsetzung siehe Schritt 6.
+6. **Die Kriterien für 1.0.0 gelten als bestätigt.** Siehe Schritt 7.
 
-## Weiterhin offen
-
-1. **Container-Smoke-Test.** Die bestehende Pipeline-Spezifikation hat ihn
-   zurückgestellt, bis das Image eine testbare Option anbietet. Vor 1.0 wäre ein
-   `--version`-Flag ein kleiner Schritt mit doppeltem Nutzen: Smoke-Test in der
-   Pipeline und Diagnose im Betrieb.
-2. **Kriterien für 1.0.0.** Die in Schritt 6 vorgeschlagenen Kriterien sind ein
-   Entwurf und noch nicht bestätigt.
+Damit ist der Plan vollständig entschieden; offene Punkte bestehen keine mehr.
