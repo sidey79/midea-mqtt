@@ -20,8 +20,8 @@ Pipeline herausgehalten und für später vorgesehen hat.
 
 ## Ist-Zustand
 
-Stand nach dem Merge von PR #25 (Trivy-Scan). PR #26 (distroless-Runtime,
-`VERSION` 0.3.0) ist zu diesem Zeitpunkt offen.
+Stand nach dem Merge von PR #25 (Trivy-Scan) und PR #26 (distroless-Runtime),
+`VERSION` steht auf `0.3.0`.
 
 Was bereits zum Ziel passt:
 
@@ -48,11 +48,17 @@ Was dem Ziel entgegensteht:
 3. **Kein Git-Tag, kein GitHub Release.** Veröffentlichte Versionen sind derzeit
    nur GHCR-Tags. Im Repository markiert nichts den Stand, aus dem eine Version
    gebaut wurde, und es gibt keine Release-Notes.
-4. **Renovate merged Digest-Updates automatisch.** `renovate.json` nutzt
-   `docker:pinDigests` zusammen mit `default:automergeDigest`. Aktualisierungen
-   des Basisimages laufen damit ohne menschliche Freigabe nach `main` — und
-   erzeugen dort heute unmittelbar ein neues `sha-`-Image, ohne dass `VERSION`
-   sich ändert.
+4. **Digest-Updates ändern das Image, ohne die Version zu ändern.**
+   `renovate.json` nutzt `docker:pinDigests` zusammen mit
+   `default:automergeDigest`. Aktualisierungen des Basisimages laufen damit ohne
+   menschliche Freigabe nach `main` und erzeugen dort ein neues `sha-`-Image,
+   während `VERSION` unverändert bleibt. Der Automerge selbst ist erwünscht (siehe
+   Entscheidung 1); was fehlt, ist der begleitende Versions-Bump.
+
+Für die Umsetzung relevant: Renovate läuft in diesem Repository nicht als
+gehostete Mend-App, sondern als eigene Instanz (`sidey79-self-hosted-renovate`).
+Damit steht `postUpgradeTasks` zur Verfügung, das in der gehosteten Variante
+gesperrt ist.
 
 ## Zielbild des Ablaufs
 
@@ -87,8 +93,8 @@ Jeder Schritt ist ein eigener Branch und PR.
 
 - `CHANGELOG.md` nach dem Format von [Keep a Changelog](https://keepachangelog.com/de/1.1.0/)
   anlegen, mit `## [Unreleased]` an der Spitze.
-- Die bisherigen Versionen — `0.1.0`, `0.1.1`, `0.1.2` und `0.2.0` — rückwirkend
-  aus der Commit-Historie eintragen, soweit sinnvoll rekonstruierbar.
+- Die bisherigen Versionen — `0.1.0`, `0.1.1`, `0.1.2`, `0.2.0` und `0.3.0` —
+  rückwirkend aus der Commit-Historie eintragen.
 - `agents.md` um die Regel ergänzen, dass jeder nutzersichtbare Change seinen
   Changelog-Eintrag im selben PR mitbringt.
 
@@ -102,6 +108,12 @@ Jeder Schritt ist ein eigener Branch und PR.
 - Für die Rückverfolgbarkeit eines Images auf einen Commit sind
   OCI-Labels der bessere Weg als ein eigener Tag: `docker/metadata-action`
   setzt `org.opencontainers.image.revision` bereits automatisch.
+- `latest` bleibt erhalten, wird aber ausdrücklich nicht als stabiler Kanal
+  verstanden, sondern als unspezifischer Verweis auf das jeweils neueste Release.
+  Das gehört so in die README, damit niemand `latest` für eine Stabilitätszusage
+  hält; für den Produktivbetrieb ist auf `x.y.z` zu pinnen. Am Verhalten der
+  Pipeline ändert sich nichts: Pre-Releases erhalten weiterhin kein `latest`,
+  weil der Tag sonst unangekündigt Vorabversionen ausliefern würde.
 
 ### 3. Git-Tag und GitHub Release erzeugen
 
@@ -112,14 +124,41 @@ Jeder Schritt ist ein eigener Branch und PR.
 - Dafür ist `contents: write` nötig; die Berechtigung ist eng zu halten, idealer-
   weise durch Auslagerung in einen eigenen Job mit eigenen `permissions`.
 
-### 4. Renovate an den Release-Prozess anpassen
+### 4. Digest-Updates automatisch zu Patch-Releases machen
 
-- `default:automergeDigest` entfernen, damit Digest-Updates des Basisimages
-  sichtbar über einen PR laufen.
-- Digest-Updates sammeln sich dann in `Unreleased` und gehen mit dem nächsten
-  Patch-Release raus.
+Der Automerge bleibt bestehen. Ergänzt wird, dass ein Digest-Update im selben
+Pull Request bereits die Patch-Version anhebt und seinen Changelog-Eintrag
+mitbringt — der Merge löst dann regulär ein Release aus.
 
-### 5. Weg zu 1.0.0
+- In der Renovate-Instanz ein `postUpgradeTasks`-Skript für Docker-Digest-Updates
+  hinterlegen, das die Patch-Stelle in `VERSION` erhöht und unter `Unreleased`
+  einen `Security`- beziehungsweise `Changed`-Eintrag ergänzt.
+- Voraussetzung: Das Skript muss in der Konfiguration der Renovate-Instanz unter
+  `allowedCommands` freigegeben sein. Das ist Instanz-Konfiguration und liegt
+  nicht in diesem Repository.
+- `fileFilters` auf `VERSION` und `CHANGELOG.md` begrenzen, damit die Aufgabe
+  keine anderen Dateien in den PR zieht.
+
+Zwei Fallstricke, die bei der Umsetzung zu prüfen sind:
+
+- Ein Commit, den ein Workflow mit `GITHUB_TOKEN` erzeugt, löst keine weiteren
+  Workflow-Läufe aus. Deshalb wird der Bump bewusst von Renovate im PR-Branch
+  gemacht und nicht von einer Action nachträglich auf `main`.
+- Wenn mehrere Digest-Updates kurz hintereinander auflaufen, entsteht pro Update
+  ein Patch-Release. Falls das zu viele Releases erzeugt, ist Renovates
+  Zeitplanung (etwa ein wöchentliches Fenster) das passende Mittel, nicht das
+  Zurückhalten der Releases.
+
+### 5. Trivy als Release-Gate
+
+- Der Scan bleibt für Merges nach `main` reines Reporting.
+- Zusätzlich bricht ein Release ab, wenn ein CRITICAL-Fund vorliegt. Umsetzung:
+  ein zweiter Trivy-Aufruf mit `severity: CRITICAL` und `exit-code: '1'`, der nur
+  läuft, wenn `publish_version_tags` wahr ist.
+- Der Abbruch muss vor dem Push in die Registry greifen, damit kein Image
+  veröffentlicht wird, das anschließend als fehlerhaft markiert werden müsste.
+
+### 6. Weg zu 1.0.0
 
 Zu klären ist, was `1.0.0` inhaltlich bedeutet. Vorschlag als Kriterien:
 
@@ -131,22 +170,30 @@ Zu klären ist, was `1.0.0` inhaltlich bedeutet. Vorschlag als Kriterien:
 - Der Release-Prozess aus diesem Dokument ist umgesetzt, damit 1.0 nicht die
   erste Version ist, die ihn erprobt.
 
-## Offene Entscheidungen
+## Getroffene Entscheidungen
 
-1. **Sicherheitsupdates ohne Feature-Änderung.** Wenn ein Digest-Update des
-   Basisimages eine Schwachstelle schließt, erreicht es Nutzer im Zielbild erst
-   mit dem nächsten Release. Entweder wird dafür bewusst ein Patch-Release
-   gefahren, oder es braucht eine Ausnahme. Ein automatisiertes Patch-Release
-   bei Digest-Updates wäre möglich, steht aber in Spannung zur Leitregel, dass
-   jedes Release einen bewussten Changelog-Eintrag hat.
-2. **Umgang mit `latest`.** Bleibt es beim aktuellen Verhalten, dass `latest`
-   auf die neueste stabile Version zeigt, oder soll es zugunsten expliziter
-   Versions-Pins entfallen?
-3. **Trivy als Merge-Gate.** Der Scan ist derzeit bewusst reines Reporting. Für
-   1.0 wäre zu entscheiden, ob CRITICAL-Funde einen Release blockieren sollen.
-4. **Rückwirkender Changelog.** Wie weit zurück lohnt sich die Rekonstruktion —
-   nur `0.2.0`, oder alle bisherigen Versionen?
-5. **Container-Smoke-Test.** Die bestehende Pipeline-Spezifikation hat ihn
+1. **Sicherheitsupdates lösen automatisch ein Patch-Release aus.** Ein
+   Digest-Update des Basisimages hebt im selben Renovate-PR die Patch-Version an
+   und bringt seinen Changelog-Eintrag mit; der Automerge veröffentlicht damit
+   regulär ein Release. Bewusst in Kauf genommen wird, dass diese Releases ohne
+   menschliche Entscheidung entstehen — der Gegenwert ist, dass Sicherheitsfixes
+   Nutzer ohne Verzögerung erreichen. Umsetzung siehe Schritt 4.
+2. **`latest` bleibt, gilt aber als unspezifisch.** Der Tag wird nicht als
+   stabiler Kanal verstanden, sondern verweist schlicht auf das neueste Release.
+   Das ist eine Dokumentationsaufgabe in der README, keine Änderung an der
+   Pipeline. Umsetzung siehe Schritt 2.
+3. **Trivy blockiert Releases, nicht Merges.** Merges nach `main` bleiben
+   ungehindert; ein Release mit CRITICAL-Fund bricht ab. Umsetzung siehe
+   Schritt 5.
+4. **Der Changelog wird vollständig rekonstruiert**, also `0.1.0`, `0.1.1`,
+   `0.1.2`, `0.2.0` und `0.3.0` rückwirkend eingetragen. Umsetzung siehe
+   Schritt 1.
+
+## Weiterhin offen
+
+1. **Container-Smoke-Test.** Die bestehende Pipeline-Spezifikation hat ihn
    zurückgestellt, bis das Image eine testbare Option anbietet. Vor 1.0 wäre ein
    `--version`-Flag ein kleiner Schritt mit doppeltem Nutzen: Smoke-Test in der
    Pipeline und Diagnose im Betrieb.
+2. **Kriterien für 1.0.0.** Die in Schritt 6 vorgeschlagenen Kriterien sind ein
+   Entwurf und noch nicht bestätigt.
