@@ -16,6 +16,10 @@ concurrency:
 jobs:
   docker-image:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      stable: ${{ steps.version.outputs.stable }}
+      publish: ${{ steps.publish.outputs.publish_version_tags }}
     permissions:
       contents: read
       packages: write
@@ -77,6 +81,23 @@ jobs:
           echo "minor=$minor" >> "$GITHUB_OUTPUT"
           echo "stable=$stable" >> "$GITHUB_OUTPUT"
           echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the changelog documents this release
+        if: steps.publish.outputs.publish_version_tags == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          escaped="${VERSION//./\\.}"
+          if ! grep -qE "^## \\[${escaped}\\]" CHANGELOG.md; then
+            {
+              echo "CHANGELOG.md has no section for ${VERSION}."
+              echo "Move the Unreleased entries into a '## [${VERSION}] - <date>' section before releasing."
+            } >&2
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -169,3 +190,67 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    needs: docker-image
+    if: needs.docker-image.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Extract the changelog section for this release
+        env:
+          VERSION: ${{ needs.docker-image.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          awk -v ver="$VERSION" '
+            index($0, "## [" ver "]") == 1 { collecting = 1; next }
+            collecting && /^## \[/ { exit }
+            collecting { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "No changelog content found for ${VERSION}" >&2
+            exit 1
+          fi
+
+          # Fuehrende und abschliessende Leerzeilen entfernen.
+          sed -i -e '/./,$!d' release-notes.md
+          printf '%s\n' "$(cat release-notes.md)" > release-notes.md
+
+          echo "Release notes for ${VERSION}:"
+          cat release-notes.md
+
+      - name: Create the git tag and the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.docker-image.outputs.version }}
+          STABLE: ${{ needs.docker-image.outputs.stable }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="v${VERSION}"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists; a released version must not be re-tagged." >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release ${VERSION}"
+          git push origin "$tag"
+
+          args=(--title "$tag" --notes-file release-notes.md)
+          if [ "$STABLE" != "true" ]; then
+            args+=(--prerelease)
+          fi
+
+          gh release create "$tag" "${args[@]}"
