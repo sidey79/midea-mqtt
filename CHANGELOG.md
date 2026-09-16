@@ -9,6 +9,14 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Added
+
+- Releasing a version now creates an annotated git tag `vMAJOR.MINOR.PATCH` and
+  a GitHub release. The release notes are the changelog section for that
+  version; pre-releases are marked as such.
+- A release aborts before anything is published if `CHANGELOG.md` has no section
+  for the version being released.
+
 ### Changed
 
 - Container images are published only when a release is cut, that is when
