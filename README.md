@@ -11,6 +11,26 @@ The repo includes FHEM MQTT2 examples, but the bridge itself can be used with an
 - `examples/fhem-mqtt2-device.txt`: FHEM `MQTT2_DEVICE` example
 - `test_midea_mqtt_bridge.py`: unit tests
 
+## Container Images
+
+Images are published to `ghcr.io/sidey79/midea-mqtt`. A new image is published
+only when a release is cut, that is when `VERSION` changes on `main`. Merging a
+change without a version bump does not produce a new image.
+
+A stable release `1.2.3` publishes these tags:
+
+- `1.2.3`: the exact release
+- `1.2` and `1`: moving tags pointing at the newest matching release
+- `latest`: the most recent release, unspecific
+
+Pre-releases such as `1.3.0-rc.1` publish only their full version tag, so they
+never move `latest` or the major and minor tags.
+
+`latest` is not a stability promise. It points at whatever was released most
+recently and can move to a new minor or major version at any time. Pin `x.y.z`
+for anything you depend on, optionally together with the image digest as
+`docker-compose.yml` does.
+
 ## Quick Start
 
 1. Copy `.env.example` to `.env` or put the values directly into your stack file, whichever matches your deployment style.

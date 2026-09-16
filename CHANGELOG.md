@@ -17,6 +17,18 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 - A release aborts before anything is published if `CHANGELOG.md` has no section
   for the version being released.
 
+### Changed
+
+- Container images are published only when a release is cut, that is when
+  `VERSION` changes on `main`. Merging a change without a version bump no longer
+  produces a published image.
+
+### Removed
+
+- The `sha-<commit>` image tag. Every published image now belongs to exactly one
+  release. Pin `x.y.z` instead; for tracing an image back to its commit, the
+  image carries the `org.opencontainers.image.revision` label.
+
 ## [0.3.0] - 2026-09-07
 
 ### Changed

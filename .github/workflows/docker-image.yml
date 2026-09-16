@@ -160,7 +160,7 @@ jobs:
           category: trivy-container
 
       - name: Log in to GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.publish.outputs.publish_version_tags == 'true'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -177,7 +177,6 @@ jobs:
             type=raw,value=${{ steps.version.outputs.minor }},enable=${{ steps.version.outputs.stable == 'true' && steps.publish.outputs.publish_version_tags == 'true' }}
             type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.stable == 'true' && steps.publish.outputs.publish_version_tags == 'true' }}
             type=raw,value=latest,enable=${{ steps.version.outputs.stable == 'true' && steps.publish.outputs.publish_version_tags == 'true' }}
-            type=sha,prefix=sha-
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
@@ -185,7 +184,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.publish.outputs.publish_version_tags == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
