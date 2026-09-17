@@ -130,9 +130,19 @@ Der Automerge bleibt bestehen. Ergänzt wird, dass ein Digest-Update im selben
 Pull Request bereits die Patch-Version anhebt und seinen Changelog-Eintrag
 mitbringt — der Merge löst dann regulär ein Release aus.
 
-- In der Renovate-Instanz ein `postUpgradeTasks`-Skript für Docker-Digest-Updates
-  hinterlegen, das die Patch-Stelle in `VERSION` erhöht und unter `Unreleased`
-  einen `Security`- beziehungsweise `Changed`-Eintrag ergänzt.
+- `scripts/renovate-patch-release.sh` erhöht die Patch-Stelle in `VERSION` und
+  legt im Changelog gleich einen fertigen Versionsabschnitt an, nicht nur einen
+  Eintrag unter `Unreleased`. Das ist nötig, weil der Guard aus Schritt 3 einen
+  `## [x.y.z]`-Abschnitt verlangt: Ein Bump, der seine Einträge unter
+  `Unreleased` stehen ließe, würde das Release abbrechen lassen.
+- Das Skript verweigert den Bump, wenn unter `Unreleased` bereits Einträge
+  stehen. Sobald echte Änderungen auf ihr Release warten, ist die Wahl der
+  Versionsstufe eine menschliche Entscheidung und keine, die ein
+  Dependency-Bot treffen sollte. Der Renovate-Pull-Request bleibt dann offen,
+  bis jemand bewusst released.
+- `renovate.json` ruft das Skript über eine `packageRule` für Docker-Digest-
+  Updates auf, mit `executionMode: "branch"`, damit mehrere Digest-Updates in
+  einem Branch nur einen Bump erzeugen.
 - Voraussetzung: Das Skript muss in der Konfiguration der Renovate-Instanz unter
   `allowedCommands` freigegeben sein. Das ist Instanz-Konfiguration und liegt
   nicht in diesem Repository.

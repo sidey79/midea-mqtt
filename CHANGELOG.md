@@ -11,6 +11,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ### Added
 
+- Base image digest updates now raise the patch version and bring their own
+  changelog section, so they ship as a regular patch release instead of waiting
+  for one. When other entries are already pending, the bump is refused and
+  cutting the release stays a deliberate decision.
 - Releasing a version now creates an annotated git tag `vMAJOR.MINOR.PATCH` and
   a GitHub release. The release notes are the changelog section for that
   version; pre-releases are marked as such.
