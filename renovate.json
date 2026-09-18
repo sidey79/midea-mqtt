@@ -4,5 +4,16 @@
     "config:recommended",
     "docker:pinDigests",
     "default:automergeDigest"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["digest"],
+      "postUpgradeTasks": {
+        "commands": ["./scripts/renovate-patch-release.sh"],
+        "fileFilters": ["VERSION", "CHANGELOG.md"],
+        "executionMode": "branch"
+      }
+    }
   ]
 }
