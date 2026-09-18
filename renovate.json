@@ -12,7 +12,8 @@
       "postUpgradeTasks": {
         "commands": ["./scripts/renovate-patch-release.sh"],
         "fileFilters": ["VERSION", "CHANGELOG.md"],
-        "executionMode": "branch"
+        "executionMode": "branch",
+        "dataFileTemplate": "{{#each upgrades}}{{{depName}}}\t{{{currentValue}}}\t{{{newValue}}}\t{{{currentDigestShort}}}\t{{{newDigestShort}}}\n{{/each}}"
       }
     }
   ]
