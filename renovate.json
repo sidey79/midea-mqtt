@@ -7,8 +7,8 @@
   ],
   "packageRules": [
     {
-      "matchDatasources": ["docker"],
-      "matchUpdateTypes": ["digest"],
+      "description": "Every dependency that ends up inside the published image gets a patch release, so the update actually reaches users.",
+      "matchFileNames": ["Dockerfile", "requirements.txt"],
       "postUpgradeTasks": {
         "commands": ["./scripts/renovate-patch-release.sh"],
         "fileFilters": ["VERSION", "CHANGELOG.md"],

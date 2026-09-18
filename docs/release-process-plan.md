@@ -124,11 +124,17 @@ Jeder Schritt ist ein eigener Branch und PR.
 - Dafür ist `contents: write` nötig; die Berechtigung ist eng zu halten, idealer-
   weise durch Auslagerung in einen eigenen Job mit eigenen `permissions`.
 
-### 4. Digest-Updates automatisch zu Patch-Releases machen
+### 4. Abhängigkeits-Updates automatisch zu Patch-Releases machen
 
-Der Automerge bleibt bestehen. Ergänzt wird, dass ein Digest-Update im selben
-Pull Request bereits die Patch-Version anhebt und seinen Changelog-Eintrag
-mitbringt — der Merge löst dann regulär ein Release aus.
+Der Automerge bleibt bestehen. Ergänzt wird, dass ein Abhängigkeits-Update im
+selben Pull Request bereits die Patch-Version anhebt und seinen
+Changelog-Eintrag mitbringt — der Merge löst dann regulär ein Release aus.
+
+Maßgeblich ist, ob eine Aktualisierung im ausgelieferten Image landet, nicht um
+welche Art von Abhängigkeit es sich handelt. Erfasst werden deshalb `Dockerfile`
+und `requirements.txt`. Aktualisierungen von GitHub-Actions-Versionen oder des
+Beispiels in `docker-compose.yml` verändern das Image nicht und lösen folglich
+auch kein Release aus.
 
 - `scripts/renovate-patch-release.sh` erhöht die Patch-Stelle in `VERSION` und
   legt im Changelog gleich einen fertigen Versionsabschnitt an, nicht nur einen
@@ -140,9 +146,15 @@ mitbringt — der Merge löst dann regulär ein Release aus.
   Versionsstufe eine menschliche Entscheidung und keine, die ein
   Dependency-Bot treffen sollte. Der Renovate-Pull-Request bleibt dann offen,
   bis jemand bewusst released.
-- `renovate.json` ruft das Skript über eine `packageRule` für Docker-Digest-
-  Updates auf, mit `executionMode: "branch"`, damit mehrere Digest-Updates in
-  einem Branch nur einen Bump erzeugen.
+- `renovate.json` ruft das Skript über eine `packageRule` mit
+  `matchFileNames: ["Dockerfile", "requirements.txt"]` auf, mit
+  `executionMode: "branch"`, damit mehrere Updates in einem Branch nur einen
+  Bump erzeugen. Eine frühere Fassung war auf `matchDatasources: ["docker"]`
+  zusammen mit `matchUpdateTypes: ["digest"]` beschränkt und erfasste damit
+  Updates der Python-Abhängigkeiten nicht — diese wären ohne Versions-Bump
+  gemergt worden und hätten nie einen Nutzer erreicht.
+- Das Skript benennt im Changelog-Eintrag anhand der geänderten Dateien, was
+  aktualisiert wurde.
 - Voraussetzung: Das Skript muss in der Konfiguration der Renovate-Instanz unter
   `allowedCommands` freigegeben sein. Das ist Instanz-Konfiguration und liegt
   nicht in diesem Repository.
@@ -154,6 +166,9 @@ Zwei Fallstricke, die bei der Umsetzung zu prüfen sind:
 - Ein Commit, den ein Workflow mit `GITHUB_TOKEN` erzeugt, löst keine weiteren
   Workflow-Läufe aus. Deshalb wird der Bump bewusst von Renovate im PR-Branch
   gemacht und nicht von einer Action nachträglich auf `main`.
+- `postUpgradeTasks` wirken nicht rückwirkend auf bereits offene Renovate-Pull-
+  Requests. Nach einer Änderung an dieser Konfiguration müssen bestehende
+  Branches neu erzeugt werden, etwa über die Rebase-Checkbox im Pull Request.
 - Wenn mehrere Digest-Updates kurz hintereinander auflaufen, entsteht pro Update
   ein Patch-Release. Falls das zu viele Releases erzeugt, ist Renovates
   Zeitplanung (etwa ein wöchentliches Fenster) das passende Mittel, nicht das
