@@ -141,11 +141,15 @@ auch kein Release aus.
   Eintrag unter `Unreleased`. Das ist nötig, weil der Guard aus Schritt 3 einen
   `## [x.y.z]`-Abschnitt verlangt: Ein Bump, der seine Einträge unter
   `Unreleased` stehen ließe, würde das Release abbrechen lassen.
-- Das Skript verweigert den Bump, wenn unter `Unreleased` bereits Einträge
-  stehen. Sobald echte Änderungen auf ihr Release warten, ist die Wahl der
-  Versionsstufe eine menschliche Entscheidung und keine, die ein
-  Dependency-Bot treffen sollte. Der Renovate-Pull-Request bleibt dann offen,
-  bis jemand bewusst released.
+- Stehen unter `Unreleased` bereits Einträge, hebt das Skript die Version nicht
+  an, trägt die Aktualisierung aber unter `Unreleased` ein. Sobald echte
+  Änderungen auf ihr Release warten, ist die Wahl der Versionsstufe eine
+  menschliche Entscheidung und keine, die ein Dependency-Bot treffen sollte —
+  verschwiegen werden darf die Aktualisierung deshalb trotzdem nicht. Der
+  Renovate-Pull-Request lässt sich in diesem Fall mergen, ohne ein Image zu
+  veröffentlichen; die Aktualisierung erreicht die Nutzer mit dem nächsten
+  bewusst geschnittenen Release. Läuft das Skript auf demselben Branch erneut,
+  erkennt es seinen eigenen Eintrag wieder und legt ihn nicht ein zweites Mal an.
 - `renovate.json` ruft das Skript über eine `packageRule` mit
   `matchFileNames: ["Dockerfile", "requirements.txt"]` auf, mit
   `executionMode: "branch"`, damit mehrere Updates in einem Branch nur einen
