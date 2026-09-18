@@ -18,7 +18,9 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
   already pending, the version is left alone and the update is only recorded
   under `[Unreleased]`, so it ships with the next release that is cut
   deliberately — picking that version stays a human decision, but the update is
-  never merged silently.
+  never merged silently. These entries live under their own `### Dependencies`
+  heading at the top of the section and name the package and both versions, so
+  a bot entry never mixes into the hand-written notes of a pending release.
 - Releasing a version now creates an annotated git tag `vMAJOR.MINOR.PATCH` and
   a GitHub release. The release notes are the changelog section for that
   version; pre-releases are marked as such.

@@ -150,6 +150,23 @@ auch kein Release aus.
   veröffentlichen; die Aktualisierung erreicht die Nutzer mit dem nächsten
   bewusst geschnittenen Release. Läuft das Skript auf demselben Branch erneut,
   erkennt es seinen eigenen Eintrag wieder und legt ihn nicht ein zweites Mal an.
+- Die Einträge stehen in einem eigenen Abschnitt `### Dependencies` an der
+  Spitze von `Unreleased`, nicht in den bestehenden Kategorien. Ein Bot-Eintrag
+  soll sich nicht unter die handgeschriebenen Notizen eines anstehenden Releases
+  mischen: Beim Schneiden des Releases bleibt so auf einen Blick erkennbar, was
+  von Renovate kam. Im Bump-Pfad trägt der neu angelegte Versionsabschnitt
+  dieselbe Überschrift.
+- Welches Paket sich bewegt hat, liefert Renovate selbst. `renovate.json` füllt
+  über `postUpgradeTasks.dataFileTemplate` eine Datei mit einem
+  Tab-getrennten Satz je Upgrade (`depName`, `currentValue`, `newValue`,
+  `currentDigestShort`, `newDigestShort`); ihren Pfad findet das Skript in der
+  Umgebungsvariablen `RENOVATE_POST_UPGRADE_COMMAND_DATA_FILE`. Daraus entsteht
+  etwa `- Update msmart-ng from 2026.8.0 to 2026.9.0.` beziehungsweise, wenn
+  sich nur der Digest bewegt hat, `- Update the python image to digest
+  sha256:…`. Formuliert wird im Skript und nicht in der Handlebars-Vorlage,
+  damit sich der Text ohne Renovate testen lässt. Fehlt die Datei — etwa bei
+  einem Lauf von Hand —, fällt das Skript auf die frühere Sammelformulierung
+  anhand der geänderten Dateien zurück.
 - `renovate.json` ruft das Skript über eine `packageRule` mit
   `matchFileNames: ["Dockerfile", "requirements.txt"]` auf, mit
   `executionMode: "branch"`, damit mehrere Updates in einem Branch nur einen
