@@ -1,2 +1,2 @@
-msmart-ng==2026.8.0
+msmart-ng==2026.9.0
 paho-mqtt==2.1.0
