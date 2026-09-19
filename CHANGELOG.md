@@ -12,6 +12,7 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 ### Dependencies
 
 - Update msmart-ng from ==2026.8.0 to ==2026.9.0.
+- Update the python image to digest 8d9d0b8.
 
 ### Added
 
