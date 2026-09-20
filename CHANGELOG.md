@@ -9,6 +9,8 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-20
+
 ### Dependencies
 
 - Update msmart-ng from ==2026.8.0 to ==2026.9.0.
