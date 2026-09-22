@@ -182,6 +182,33 @@ class StatePayloadTests(unittest.TestCase):
         self.assertTrue(payload["flash_cool"])
         self.assertEqual(payload["fresh_air_fan_speed"], "boost")
 
+    def test_state_payload_includes_sound_fields_on_new_api_shape(self) -> None:
+        bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
+        device = types.SimpleNamespace(
+            online=True,
+            supported=True,
+            sound=True,
+            supports_sound=True,
+        )
+
+        payload = midea_mqtt_bridge.MideaBridge.state_payload(bridge, device)
+
+        self.assertTrue(payload["sound"])
+        self.assertTrue(payload["supports_sound"])
+
+    def test_state_payload_falls_back_to_beep_on_old_api_shape(self) -> None:
+        bridge = object.__new__(midea_mqtt_bridge.MideaBridge)
+        device = types.SimpleNamespace(
+            online=True,
+            supported=True,
+            beep=True,
+        )
+
+        payload = midea_mqtt_bridge.MideaBridge.state_payload(bridge, device)
+
+        self.assertTrue(payload["sound"])
+        self.assertNotIn("supports_sound", payload)
+
 
 class DiscoveryModeTests(unittest.IsolatedAsyncioTestCase):
     async def test_discover_console_outputs_payload_without_token_key(self) -> None:
@@ -594,6 +621,62 @@ class FlashAndFreshAirCommandTests(unittest.IsolatedAsyncioTestCase):
         await bridge.apply_command({"fresh_air_fan_speed": "boost"})
 
         self.assertEqual(device.fresh_air_fan_speed, midea_mqtt_bridge.AC.FreshAirFanSpeed.BOOST)
+
+
+class SoundCommandTests(unittest.IsolatedAsyncioTestCase):
+    async def test_apply_command_sets_sound_on_new_api_shape(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            sound=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"sound": True})
+
+        self.assertTrue(device.sound)
+
+    async def test_apply_command_maps_beep_to_public_sound_on_new_api_shape(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            sound=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"beep": True})
+
+        self.assertTrue(device.sound)
+
+    async def test_apply_command_keeps_legacy_beep_on_old_api_shape(self) -> None:
+        bridge = make_bridge()
+        device = types.SimpleNamespace(
+            refresh=lambda: asyncio.sleep(0),
+            apply=lambda: asyncio.sleep(0),
+            beep=False,
+        )
+
+        async def fake_get_device() -> types.SimpleNamespace:
+            return device
+
+        bridge.get_device = fake_get_device
+        bridge.publish_state = lambda: asyncio.sleep(0)
+
+        await bridge.apply_command({"sound": True})
+
+        self.assertTrue(device.beep)
 
 
 class BreezeModeCommandTests(unittest.IsolatedAsyncioTestCase):

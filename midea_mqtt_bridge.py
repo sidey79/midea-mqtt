@@ -409,6 +409,8 @@ class MideaBridge:
             ),
             "supports_flash": optional_bool(device, "supports_flash", "supports_flash_cool"),
             "supports_fresh_air": optional_bool(device, "supports_fresh_air"),
+            "sound": optional_bool(device, "sound", "_sound", "beep"),
+            "supports_sound": optional_bool(device, "supports_sound"),
             "out_silent": optional_bool(device, "out_silent", "_out_silent"),
             "turbo": optional_bool(device, "turbo", "turbo_mode"),
             "turbo_mode": optional_bool(device, "turbo", "turbo_mode"),
@@ -496,8 +498,10 @@ class MideaBridge:
                 display_command = None
                 if "display_on" in command:
                     display_command = command["display_on"]
+                if "sound" in command:
+                    set_optional_bool(device, command["sound"], "sound", "beep")
                 if "beep" in command:
-                    set_optional_bool(device, command["beep"], "beep", "beep_on")
+                    set_optional_bool(device, command["beep"], "sound", "beep")
                 if "eco" in command:
                     set_optional_bool(device, command["eco"], "eco", "eco_mode")
                 if "eco_mode" in command:

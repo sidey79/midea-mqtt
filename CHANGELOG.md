@@ -9,6 +9,8 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-22
+
 ### Dependencies
 
 - Update msmart-ng from ==2026.8.0 to ==2026.9.0.
@@ -31,6 +33,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
   version; pre-releases are marked as such.
 - A release aborts before anything is published if `CHANGELOG.md` has no section
   for the version being released.
+- State payloads now include `sound` and `supports_sound`, matching the
+  `sound` property `msmart-ng` 2026.9.0 added to replace the undecoded
+  `buzzer` capability. Commands accept `sound` and keep `beep` as an alias so
+  older `msmart-ng` versions that only expose `beep` keep working.
 
 ### Changed
 

@@ -108,4 +108,5 @@ Optional:
 - FHEM is documented here as an example consumer, not as the only supported target.
 - Adjust the FHEM topic base and room names to match your setup.
 - `msmart-ng` 2026.8 adds Fresh Air support and optional diagnostic telemetry for groups 1, 2, 7 and 11. The bridge uses `flash` as the canonical name and keeps `flash_cool` as a legacy compatibility alias.
+- `msmart-ng` 2026.9 renamed the buzzer capability to `sound` and made it readable. The bridge uses `sound` as the canonical name and keeps `beep` as a legacy compatibility alias.
 - Supported values depend on the concrete AC model.
