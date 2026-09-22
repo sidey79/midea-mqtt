@@ -9,6 +9,17 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Changed
+
+- Every merge to `main` that touches a file shipped in the image
+  (`Dockerfile`, `requirements.txt`, `midea_mqtt_bridge.py`) and leaves
+  `VERSION` untouched now cuts its own patch release automatically: the
+  pipeline raises the patch version, turns the pending `Unreleased` entries
+  into a dated section, and publishes, no separate release pull request
+  needed. A change that needs more than a patch still gets its version raised
+  deliberately in the same pull request. An image-relevant merge without a
+  pending changelog entry now fails the pipeline instead of merging silently.
+
 ## [0.4.0] - 2026-09-22
 
 ### Dependencies

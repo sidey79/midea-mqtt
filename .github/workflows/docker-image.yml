@@ -20,8 +20,9 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       stable: ${{ steps.version.outputs.stable }}
       publish: ${{ steps.publish.outputs.publish_version_tags }}
+      release_sha: ${{ steps.autobump.outputs.release_sha || github.sha }}
     permissions:
-      contents: read
+      contents: write
       packages: write
       security-events: write
 
@@ -30,6 +31,48 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Auto-cut a patch release for image-relevant merges
+        id: autobump
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base="${{ github.event.before }}"
+          head="${{ github.sha }}"
+          release_sha="$head"
+          bumped=false
+
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            if git rev-parse "${head}^" >/dev/null 2>&1; then
+              base="${head}^"
+            else
+              base="$head"
+            fi
+          fi
+
+          # A merge that already chose its own version bump — a deliberate
+          # minor/major release, or a dependency branch pinning its own patch
+          # — is left alone; only an untouched VERSION gets an automatic bump.
+          if [ "$base" = "$head" ] || git diff --quiet "$base" "$head" -- VERSION; then
+            image_paths=(Dockerfile requirements.txt midea_mqtt_bridge.py)
+            if [ "$base" != "$head" ] && ! git diff --quiet "$base" "$head" -- "${image_paths[@]}"; then
+              ./scripts/cut-release.sh
+
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add VERSION CHANGELOG.md
+              git commit -m "chore: release $(tr -d '[:space:]' < VERSION)"
+              git push origin HEAD:main
+
+              release_sha="$(git rev-parse HEAD)"
+              bumped=true
+            fi
+          fi
+
+          echo "bumped=$bumped" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
 
       - name: Determine whether to publish version tags
         id: publish
@@ -51,6 +94,10 @@ jobs:
           fi
 
           if [ "$base" != "$head" ] && ! git diff --quiet "$base" "$head" -- VERSION; then
+            publish_version_tags=true
+          fi
+
+          if [ "${{ steps.autobump.outputs.bumped }}" = "true" ]; then
             publish_version_tags=true
           fi
 
@@ -200,6 +247,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.docker-image.outputs.release_sha }}
 
       - name: Extract the changelog section for this release
         env:

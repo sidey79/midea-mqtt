@@ -7,10 +7,10 @@
   ],
   "packageRules": [
     {
-      "description": "Every dependency that ends up inside the published image gets a patch release, so the update actually reaches users.",
+      "description": "Every dependency that ends up inside the published image records a changelog entry, so merging it cuts a patch release the same way any other image-relevant merge does.",
       "matchFileNames": ["Dockerfile", "requirements.txt"],
       "postUpgradeTasks": {
-        "commands": ["./scripts/renovate-patch-release.sh"],
+        "commands": ["./scripts/renovate-changelog-entry.sh"],
         "fileFilters": ["VERSION", "CHANGELOG.md"],
         "executionMode": "branch",
         "dataFileTemplate": "{{#each upgrades}}{{{depName}}}\t{{{currentValue}}}\t{{{newValue}}}\t{{{currentDigestShort}}}\t{{{newDigestShort}}}\n{{/each}}"

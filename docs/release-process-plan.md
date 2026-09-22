@@ -62,28 +62,45 @@ gesperrt ist.
 
 ## Zielbild des Ablaufs
 
+> **Update (siehe „Jeder Merge veröffentlicht" unter Getroffene Entscheidungen):**
+> Der ursprüngliche Ablauf sah einen eigenen, bewusst geschnittenen Release-PR
+> vor (Schritte 4–5 unten). Das ist abgelöst: Ein Merge nach `main`, der eine
+> Datei berührt, die im Image landet (`Dockerfile`, `requirements.txt`,
+> `midea_mqtt_bridge.py`), und dessen `VERSION` dabei unverändert bleibt, löst
+> die Pipeline selbst aus — sie hebt die Patch-Stelle an, überführt
+> `Unreleased` in einen datierten Abschnitt und veröffentlicht direkt. Ein
+> eigener Release-PR ist nur noch nötig, wenn eine Änderung mehr als einen
+> Patch-Bump verdient (siehe Schritt 4 in „Umsetzungsschritte" Punkt 4a).
+
 Für jede Änderung:
 
 1. Feature-Branch von `main`, Änderung, Pull Request.
 2. Der PR pflegt seinen Eintrag unter `## [Unreleased]` in `CHANGELOG.md` gleich
    mit. Der Changelog entsteht damit fortlaufend und muss beim Release nicht
    nachträglich aus Commits rekonstruiert werden.
-3. Merge nach `main`. Es entsteht **kein** veröffentlichtes Image. Die Pipeline
-   baut, testet und scannt weiterhin, pusht aber nichts.
+3. Merge nach `main`. Berührt die Änderung keine Datei, die im Image landet,
+   entsteht **kein** veröffentlichtes Image — die Pipeline baut, testet und
+   scannt weiterhin, pusht aber nichts.
 
 Für ein Release:
 
-4. Ein Release-PR bündelt zwei Dinge: den Bump in `VERSION` und das Überführen
-   des `Unreleased`-Abschnitts in einen Versionsabschnitt mit Datum.
-5. Der Merge dieses PRs nach `main` löst die Veröffentlichung aus: SemVer-Tags
-   nach GHCR, Git-Tag `vMAJOR.MINOR.PATCH`, GitHub Release mit dem
+4. **Regelfall (Patch):** Berührt die Änderung eine Datei, die im Image landet,
+   und bleibt `VERSION` im selben Merge unverändert, hebt die Pipeline die
+   Patch-Stelle selbst an und überführt `Unreleased` in einen datierten
+   Abschnitt — ohne eigenen Release-PR.
+   **Minor/Major:** Verdient eine Änderung mehr als einen Patch-Bump, setzt der
+   Autor `VERSION` im selben PR bewusst höher; die Pipeline erkennt die eigene
+   Wahl und bumpt nicht zusätzlich.
+5. Der Merge nach `main` löst in beiden Fällen dieselbe Veröffentlichung aus:
+   SemVer-Tags nach GHCR, Git-Tag `vMAJOR.MINOR.PATCH`, GitHub Release mit dem
    Changelog-Abschnitt als Release-Notes.
 
-Der Auslöser bleibt damit die `VERSION`-Änderung auf `main`. Das ist bereits
-implementiert und erprobt, bleibt über einen PR reviewbar und braucht keine
-Sonderrechte für das Setzen von Tags von Hand. Die Alternative — Push eines
-Git-Tags als Auslöser — würde einen zweiten, an der PR-Review vorbeilaufenden
-Weg in die Registry öffnen und wird deshalb nicht verfolgt.
+Der Auslöser bleibt damit die `VERSION`-Änderung auf `main` — ob sie ein Mensch
+im PR oder die Pipeline selbst danach setzt, macht für den Rest der Pipeline
+keinen Unterschied. Das braucht keine Sonderrechte für das Setzen von Tags von
+Hand. Die Alternative — Push eines Git-Tags als Auslöser — würde einen zweiten,
+an der PR-Review vorbeilaufenden Weg in die Registry öffnen und wird deshalb
+nicht verfolgt.
 
 ## Umsetzungsschritte
 
@@ -124,38 +141,48 @@ Jeder Schritt ist ein eigener Branch und PR.
 - Dafür ist `contents: write` nötig; die Berechtigung ist eng zu halten, idealer-
   weise durch Auslagerung in einen eigenen Job mit eigenen `permissions`.
 
-### 4. Abhängigkeits-Updates automatisch zu Patch-Releases machen
+### 4. Jeder image-relevante Merge wird zum Patch-Release
 
-Der Automerge bleibt bestehen. Ergänzt wird, dass ein Abhängigkeits-Update im
-selben Pull Request bereits die Patch-Version anhebt und seinen
-Changelog-Eintrag mitbringt — der Merge löst dann regulär ein Release aus.
+Der Automerge bleibt bestehen. Die Versionsentscheidung liegt aber an einer
+einzigen Stelle: dem Schritt „Auto-cut a patch release for image-relevant
+merges" in `.github/workflows/docker-image.yml`, der bei jedem Push auf `main`
+läuft. Das gilt gleichermaßen für Renovate-PRs wie für von Hand geschriebene
+Feature- und Fix-PRs — eine Aktualisierung, die in Schritt 4a (Zielbild)
+beschriebene menschliche Minor/Major-Entscheidung ausgenommen.
 
-Maßgeblich ist, ob eine Aktualisierung im ausgelieferten Image landet, nicht um
-welche Art von Abhängigkeit es sich handelt. Erfasst werden deshalb `Dockerfile`
-und `requirements.txt`. Aktualisierungen von GitHub-Actions-Versionen oder des
-Beispiels in `docker-compose.yml` verändern das Image nicht und lösen folglich
-auch kein Release aus.
+Maßgeblich ist, ob eine Änderung im ausgelieferten Image landet, nicht um
+welche Art von Änderung es sich handelt. Erfasst werden deshalb `Dockerfile`,
+`requirements.txt` und `midea_mqtt_bridge.py`. Aktualisierungen von
+GitHub-Actions-Versionen, an Doku oder am Beispiel in `docker-compose.yml`
+verändern das Image nicht und lösen folglich auch kein Release aus.
 
-- `scripts/renovate-patch-release.sh` erhöht die Patch-Stelle in `VERSION` und
-  legt im Changelog gleich einen fertigen Versionsabschnitt an, nicht nur einen
-  Eintrag unter `Unreleased`. Das ist nötig, weil der Guard aus Schritt 3 einen
-  `## [x.y.z]`-Abschnitt verlangt: Ein Bump, der seine Einträge unter
-  `Unreleased` stehen ließe, würde das Release abbrechen lassen.
-- Stehen unter `Unreleased` bereits Einträge, hebt das Skript die Version nicht
-  an, trägt die Aktualisierung aber unter `Unreleased` ein. Sobald echte
-  Änderungen auf ihr Release warten, ist die Wahl der Versionsstufe eine
-  menschliche Entscheidung und keine, die ein Dependency-Bot treffen sollte —
-  verschwiegen werden darf die Aktualisierung deshalb trotzdem nicht. Der
-  Renovate-Pull-Request lässt sich in diesem Fall mergen, ohne ein Image zu
-  veröffentlichen; die Aktualisierung erreicht die Nutzer mit dem nächsten
-  bewusst geschnittenen Release. Läuft das Skript auf demselben Branch erneut,
-  erkennt es seinen eigenen Eintrag wieder und legt ihn nicht ein zweites Mal an.
+- `scripts/cut-release.sh` erhöht die Patch-Stelle in `VERSION` und überführt
+  den bestehenden `Unreleased`-Abschnitt in einen datierten Versionsabschnitt.
+  Es setzt voraus, dass `Unreleased` bereits Einträge enthält — leer zu sein
+  ist ein Fehler, kein Grund zum Nichtstun: Eine image-relevante Änderung ohne
+  Changelog-Eintrag ist ein Policy-Verstoß und lässt den Workflow-Lauf
+  fehlschlagen, statt ihn stillschweigend zu überspringen.
+- Der Workflow-Schritt bumpt nur, wenn `VERSION` im selben Merge unverändert
+  geblieben ist. Hat der PR selbst schon eine höhere Version gesetzt — etwa für
+  einen bewussten Minor- oder Major-Bump —, erkennt der Schritt das an einem
+  Diff auf `VERSION` zwischen dem vorherigen und dem neuen `main`-Stand und
+  lässt die Wahl unangetastet.
+- Der Bump-Commit (`chore: release x.y.z`) entsteht und wird direkt im selben
+  Job auf `main` gepusht, bevor Build, Tag und Release im selben Lauf
+  weiterlaufen. Ein zweiter, durch den Push ausgelöster Workflow-Lauf wird
+  bewusst nicht benötigt — ein Commit, den ein Workflow mit `GITHUB_TOKEN`
+  erzeugt, löst ohnehin keine weiteren Läufe aus. Der `release`-Job checkt
+  deshalb explizit den vom `docker-image`-Job gemeldeten `release_sha` aus statt
+  `github.sha`, damit Tag und Release auf dem gebumpten Commit landen.
+- `scripts/renovate-changelog-entry.sh` (vormals `renovate-patch-release.sh`)
+  schreibt für Renovate-PRs nur noch den Changelog-Eintrag unter `Unreleased`
+  — das Bumpen selbst übernimmt jetzt einheitlich der Workflow-Schritt oben,
+  egal ob die Änderung von Renovate oder von einem Menschen stammt.
 - Die Einträge stehen in einem eigenen Abschnitt `### Dependencies` an der
   Spitze von `Unreleased`, nicht in den bestehenden Kategorien. Ein Bot-Eintrag
   soll sich nicht unter die handgeschriebenen Notizen eines anstehenden Releases
   mischen: Beim Schneiden des Releases bleibt so auf einen Blick erkennbar, was
-  von Renovate kam. Im Bump-Pfad trägt der neu angelegte Versionsabschnitt
-  dieselbe Überschrift.
+  von Renovate kam.
 - Welches Paket sich bewegt hat, liefert Renovate selbst. `renovate.json` füllt
   über `postUpgradeTasks.dataFileTemplate` eine Datei mit einem
   Tab-getrennten Satz je Upgrade (`depName`, `currentValue`, `newValue`,
@@ -170,30 +197,18 @@ auch kein Release aus.
 - `renovate.json` ruft das Skript über eine `packageRule` mit
   `matchFileNames: ["Dockerfile", "requirements.txt"]` auf, mit
   `executionMode: "branch"`, damit mehrere Updates in einem Branch nur einen
-  Bump erzeugen. Eine frühere Fassung war auf `matchDatasources: ["docker"]`
-  zusammen mit `matchUpdateTypes: ["digest"]` beschränkt und erfasste damit
-  Updates der Python-Abhängigkeiten nicht — diese wären ohne Versions-Bump
-  gemergt worden und hätten nie einen Nutzer erreicht.
-- Das Skript benennt im Changelog-Eintrag anhand der geänderten Dateien, was
-  aktualisiert wurde.
+  Eintrag erzeugen.
 - Voraussetzung: Das Skript muss in der Konfiguration der Renovate-Instanz unter
   `allowedCommands` freigegeben sein. Das ist Instanz-Konfiguration und liegt
   nicht in diesem Repository.
 - `fileFilters` auf `VERSION` und `CHANGELOG.md` begrenzen, damit die Aufgabe
   keine anderen Dateien in den PR zieht.
 
-Zwei Fallstricke, die bei der Umsetzung zu prüfen sind:
+Ein Fallstrick, der bei der Umsetzung zu prüfen war:
 
-- Ein Commit, den ein Workflow mit `GITHUB_TOKEN` erzeugt, löst keine weiteren
-  Workflow-Läufe aus. Deshalb wird der Bump bewusst von Renovate im PR-Branch
-  gemacht und nicht von einer Action nachträglich auf `main`.
 - `postUpgradeTasks` wirken nicht rückwirkend auf bereits offene Renovate-Pull-
   Requests. Nach einer Änderung an dieser Konfiguration müssen bestehende
   Branches neu erzeugt werden, etwa über die Rebase-Checkbox im Pull Request.
-- Wenn mehrere Digest-Updates kurz hintereinander auflaufen, entsteht pro Update
-  ein Patch-Release. Falls das zu viele Releases erzeugt, ist Renovates
-  Zeitplanung (etwa ein wöchentliches Fenster) das passende Mittel, nicht das
-  Zurückhalten der Releases.
 
 ### 5. Trivy als Release-Gate
 
@@ -267,5 +282,17 @@ Image einen testbaren Aufruf anbietet. Der fehlende Baustein dafür ist ein
    `--version`-Flag voraus, das zugleich der Diagnose im Betrieb dient.
    Umsetzung siehe Schritt 6.
 6. **Die Kriterien für 1.0.0 gelten als bestätigt.** Siehe Schritt 7.
+7. **Jeder Merge veröffentlicht.** Der ursprünglich vorgesehene, bewusst
+   geschnittene Release-PR entfällt für den Regelfall. Berührt ein Merge nach
+   `main` eine Datei, die im Image landet, und lässt `VERSION` dabei
+   unverändert, hebt die Pipeline selbst die Patch-Stelle an und
+   veröffentlicht — ohne weiteren Zwischenschritt. Vorbild ist der
+   `alexa-cookie`-Release-Workflow, bei dem ebenfalls kein separater
+   Release-PR nötig ist. Ausdrücklich erhalten bleibt die Unterscheidung nach
+   dem, was im Image landet: Änderungen an CI, Doku oder Tests bleiben
+   versionslos, wie bisher. Eine Änderung, die mehr als einen Patch-Bump
+   verdient, bekommt ihre Minor- oder Major-Version weiterhin bewusst von
+   einem Menschen, indem `VERSION` im selben PR gesetzt wird — die Pipeline
+   bumpt dann nicht zusätzlich. Umsetzung siehe Schritt 4.
 
 Damit ist der Plan vollständig entschieden; offene Punkte bestehen keine mehr.
