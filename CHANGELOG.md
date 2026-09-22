@@ -9,7 +9,7 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-09-20
+## [0.4.0] - 2026-09-22
 
 ### Dependencies
 
