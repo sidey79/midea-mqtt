@@ -7,6 +7,11 @@
   ],
   "packageRules": [
     {
+      "description": "Keep the Python version in sync across the builder image, the distroless runtime image and the CI setup-python step by updating them in one PR.",
+      "matchPackageNames": ["python", "gcr.io/distroless/python3-debian13"],
+      "groupName": "python"
+    },
+    {
       "description": "Every dependency that ends up inside the published image gets a patch release, so the update actually reaches users.",
       "matchFileNames": ["Dockerfile", "requirements.txt"],
       "postUpgradeTasks": {
