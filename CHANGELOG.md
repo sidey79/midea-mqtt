@@ -9,6 +9,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update the python image to digest 57b29a7.
+
 ### Changed
 
 - Every merge to `main` that touches a file shipped in the image
