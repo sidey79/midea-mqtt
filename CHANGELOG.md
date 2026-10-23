@@ -9,6 +9,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update the gcr.io/distroless/python3-debian13 image to digest 96234ea.
+
 ## [0.4.1] - 2026-10-22
 
 ### Dependencies
