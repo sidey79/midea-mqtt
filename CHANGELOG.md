@@ -9,6 +9,8 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-24
+
 ### Dependencies
 
 - Update the gcr.io/distroless/python3-debian13 image to digest 0db804f.
