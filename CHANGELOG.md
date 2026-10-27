@@ -9,6 +9,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update the python image to digest b3575dc.
+
 ## [0.4.3] - 2026-10-24
 
 ### Dependencies
