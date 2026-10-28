@@ -9,6 +9,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update the python image to digest 2d44738.
+
 ## [0.4.4] - 2026-10-27
 
 ### Dependencies
