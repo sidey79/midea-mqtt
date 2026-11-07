@@ -14,6 +14,7 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 ### Dependencies
 
 - Update the python image to digest 09a17ca.
+- Update paho-mqtt from ==2.1.0 to ==2.2.0.
 
 ## [0.4.7] - 2026-11-03
 
