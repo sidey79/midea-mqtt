@@ -9,6 +9,8 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-11-08
+
 ### Dependencies
 
 - Update the python image to digest e48f59c.
