@@ -9,6 +9,10 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update the gcr.io/distroless/python3-debian13 image to digest 5bac3c3.
+
 ## [0.4.9] - 2026-11-08
 
 ### Dependencies
