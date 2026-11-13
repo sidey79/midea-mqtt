@@ -14,6 +14,7 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 ### Dependencies
 
 - Update the gcr.io/distroless/python3-debian13 image to digest 60faad2.
+- Update msmart-ng from ==2026.9.0 to ==2026.11.0.
 
 ## [0.4.10] - 2026-11-10
 
