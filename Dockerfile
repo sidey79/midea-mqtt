@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --target /deps -r requirements.txt
 
-FROM gcr.io/distroless/python3-debian13@sha256:4d4b3e43e67a4d3e149d68d30a68b7d48c289e4e1dabf8201271e6252805c9dd
+FROM gcr.io/distroless/python3-debian13@sha256:7fa0d47901299aa0017c9ef24b8306f72567889977242dce2316b5cb81a06a1f
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/deps
