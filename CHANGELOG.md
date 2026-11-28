@@ -9,6 +9,11 @@ Entries below 0.4.0 were reconstructed from the commit history after the fact.
 
 ## [Unreleased]
 
+### Dependencies
+
+- Update python from 3.13 to 3.15.
+- Update python from 3.13-slim to 3.15-slim.
+
 ## [0.4.15] - 2026-11-27
 
 ### Dependencies
